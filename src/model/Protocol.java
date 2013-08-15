@@ -7,5 +7,5 @@ public abstract class Protocol {
 		this.netLayer = nl;
 		this.appLayer = al;
 	}
-	public abstract void route(Packet p, int toId);
+	public abstract void update();
 }
