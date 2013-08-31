@@ -1,4 +1,4 @@
-#import dsr
+import dsr
 
 class application:
     def __init__(self):
