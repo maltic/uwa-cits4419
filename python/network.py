@@ -27,7 +27,7 @@ def send(msg, addr):
 	
 	return
 
-def recieve():
+def receive():
 	ret = input_buffer
 	input_buffer = []
 	return ret
