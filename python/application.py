@@ -2,7 +2,7 @@ import dsr
 
 class application:
     def __init__(self):
-        self.buffer = {}
+        self.buffer = []
         
     def send(self):
         msg = input("Message: ")
@@ -10,7 +10,7 @@ class application:
         dsr.send(msg, toId)
 
     def receive(self):
-        for sender in self.buffer:
-            print(self.buffer[sender])
-        self.buffer = {}
+        for (msg, senderId) in self.buffer:
+            print(senderId+':', msg)
+        self.buffer = []
         
