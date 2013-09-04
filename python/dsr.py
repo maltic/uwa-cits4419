@@ -50,12 +50,14 @@ class DSR(object):
 					route_maintenance(msg.route)
 				route_maintenance(msg.route)
 
+#these need fleshing out with implementations:
 def got_msg_in_medium(self):
 	return True
 
 def get_msg(self):
 	return "hello"
 
+#leave out route-cache stuff for now.
 def route_cache_remove(self, broken_link):
 	pass
 
@@ -83,12 +85,15 @@ def route_cache_contains(self, destination):
 def route_cache_finds(self, destination):
 	return ""
 
+#call down to the network.send() function
 def forward(self, msg, route):
 	pass
 
+#flesh this out
 def broadcast(self, msg, type):
 	pass
 
+#check for a DSR identifier of some sort in the data received.
 def is_data_packet(self, msg):
 	return True
 
