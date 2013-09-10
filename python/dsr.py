@@ -21,11 +21,14 @@ def make_packet(type, path, contents):
 	""
 
 class DSRMessage(object):
+	next_id = 0
 	def __init__(self, packet):
 		#work out what these are by parsing packet
 		self.type = ""
 		self.path = []
 		self.contents = ""
+		self.id = DSRMessage.next_id
+		DSRMessage.next_id += 1
 	def as_packet(self):
 		#convert back to packet
 		return make_packet(self)
