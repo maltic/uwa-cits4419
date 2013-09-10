@@ -8,30 +8,28 @@
 import network
 
 
-'''
-This is Max's work in progress. Basically just recoding things to be cleaner and more Pythonic.
-
 class DSRMessageType:
 	REQUEST = 1
 	REPLY = 2
 	ERROR = 3
 	SEND = 4
 
+next_packet_id = 0
+
 def make_packet(type, path, contents):
+	next_packet_id += 1
 	""
 
-class DSRMessage(object):
-	next_id = 0
+class ParsedPacket(object):
 	def __init__(self, packet):
 		#work out what these are by parsing packet
 		self.type = ""
 		self.path = []
 		self.contents = ""
-		self.id = DSRMessage.next_id
-		DSRMessage.next_id += 1
+		self.id = -1
 	def as_packet(self):
-		#convert back to packet
-		return make_packet(self)
+		#convert into a valid packet
+		return make_packet(self.type, self.path, self.contents)
 
 
 class DSR(object):
@@ -40,13 +38,14 @@ class DSR(object):
 		self.__receive_queue = []
 		self.__send_queue = []
 		self.__send_buffer = []
+		self.__done_buffer
 		self.ID = ""
 
-	def __network_broadcast(pkt):
+	def __network_broadcast(msg):
 		#need to work out how to use the network layer
 		return
 
-	def __network_sendto(pkt, toID):
+	def __network_sendto(msg, toID):
 		#need to work out how to use the network layer
 		return
 
@@ -61,6 +60,13 @@ class DSR(object):
 	def __route_reply(self, msg):
 		#if i am the originator of the message then remove it from the send buffer
 		#if not, then send it to the next guy on the list
+		if msg.contents == self.ID:
+			self.__send_buffer.remove(msg)
+		else:
+			next_index = msg.path.index(self.ID)+1
+			__network_sendto(make_packet(DSRMessageType.REPLY, msg.path, msg.contents), msg.path[next_index])
+		#need to start route discovery if a link is broken
+		#i havn't added this yet because I am not sure how the network layer will let us know
 
 	def __route_error(self, msg):
 		#not implemented yet, because there is not route cache
@@ -69,6 +75,12 @@ class DSR(object):
 	def __route_send(self, msg):
 		#if I am the recipient, yay! add it to the done_buffer
 		#if not, send it to the next guy on the list
+		if msg.path[-1] == self.ID:
+			self.__done_buffer.append(msg)
+		else:
+			next_index = msg.path.index(self.ID)+1
+			__network_sendto(make_packet(DSRMessageType.SEND, msg.path, msg.contents), msg.path[next_index])
+		#need to start route discovery if a link is broken
 
 	def __route_discover(self, toID):
 		#lookup route cache not implemented
@@ -78,12 +90,17 @@ class DSR(object):
 		self.__network_broadcast(make_packet(DSRMessageType.REQUEST, self.ID, toID))
 
 
-	def receive_message(self, pkt):
-		self.receive_queue.append(DSRMessage(pkt))
+	def receive_packet(self, pkt):
+		self.receive_queue.append(ParsedPacket(pkt))
 
 
 	def send_message(self, contents, toID):
-		self.send_queue.append((contents, toID)
+		self.send_queue.append((contents, toID))
+
+	def pop_messages(self):
+		tmp = self.__done_buffer
+		self.__done_buffer = []
+		return tmp
 
 	def update(self):
 		for msg in self.__receive_queue:
@@ -95,13 +112,13 @@ class DSR(object):
 				self.__route_error(msg)
 			elif self.type == DSRMessageType.SEND:
 				self.__route_send(msg)
-		for msg in self.__send_queue:
-			self.__route_discover(msg)
+		for send in self.__send_queue:
+			self.__route_discover(send[0], send[1])
 		self.__receive_queue = []
 		self.__send_queue = []
 		
+		
 '''
-
 
 # Throws an exception if something goes wrong, otherwise returns nothing
 def send(msg, recipient):
@@ -295,3 +312,6 @@ class DSR(object):
 	
 	def route_maintenance(self, route):
 		pass
+		
+		
+'''
