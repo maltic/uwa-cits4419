@@ -1,4 +1,4 @@
-#UDP Proof of Concept Protocol Secification
+#UDP Proof of Concept Protocol Specification
 
 Message: is a string sent between nodes via a UDP socket.
 	
