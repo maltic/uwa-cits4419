@@ -4,7 +4,101 @@
 #Shortening of routes by gratious reply?
 #Piggyback route error msgs on a node's new route request.
 
+
 import network
+
+
+'''
+This is Max's work in progress. Basically just recoding things to be cleaner and more Pythonic.
+
+class DSRMessageType:
+	REQUEST = 1
+	REPLY = 2
+	ERROR = 3
+	SEND = 4
+
+def make_packet(type, path, contents):
+	""
+
+class DSRMessage(object):
+	def __init__(self, packet):
+		#work out what these are by parsing packet
+		self.type = ""
+		self.path = []
+		self.contents = ""
+	def as_packet(self):
+		#convert back to packet
+		return make_packet(self)
+
+
+class DSR(object):
+	def __init__(self):
+		self.__route_cache = []
+		self.__receive_queue = []
+		self.__send_queue = []
+		self.__send_buffer = []
+		self.ID = ""
+
+	def __network_broadcast(pkt):
+		#need to work out how to use the network layer
+		return
+
+	def __network_sendto(pkt, toID):
+		#need to work out how to use the network layer
+		return
+
+	def __route_request(self, msg):
+		if msg.contents == self.ID:
+			rev_path = reversed(msg.path)
+			__network_sendto(make_packet(DSRMessageType.REPLY, rev_path, msg.path[0]), rev_path[0])
+		else:
+			msg.path.append(self.ID)
+			__network_broadcast(make_packet(DSRMessageType.REQUEST, msg.path, msg.contents)
+
+	def __route_reply(self, msg):
+		#if i am the originator of the message then remove it from the send buffer
+		#if not, then send it to the next guy on the list
+
+	def __route_error(self, msg):
+		#not implemented yet, because there is not route cache
+		return
+
+	def __route_send(self, msg):
+		#if I am the recipient, yay! add it to the done_buffer
+		#if not, send it to the next guy on the list
+
+	def __route_discover(self, toID):
+		#lookup route cache not implemented
+
+		#start route discovery
+		self.__send_buffer.append(msg)
+		self.__network_broadcast(make_packet(DSRMessageType.REQUEST, self.ID, toID))
+
+
+	def receive_message(self, pkt):
+		self.receive_queue.append(DSRMessage(pkt))
+
+
+	def send_message(self, contents, toID):
+		self.send_queue.append((contents, toID)
+
+	def update(self):
+		for msg in self.__receive_queue:
+			if msg.type == DSRMessageType.REQUEST:
+				self.__route_request(msg)
+			elif msg.type == DSRMessageType.REPLY:
+				self.__route_reply(msg)
+			elif msg.type == DSRMessageType.ERROR:
+				self.__route_error(msg)
+			elif self.type == DSRMessageType.SEND:
+				self.__route_send(msg)
+		for msg in self.__send_queue:
+			self.__route_discover(msg)
+		self.__receive_queue = []
+		self.__send_queue = []
+		
+'''
+
 
 # Throws an exception if something goes wrong, otherwise returns nothing
 def send(msg, recipient):
@@ -49,152 +143,152 @@ class DSR(object):
 				else:
 					route_maintenance(msg.route)
 				route_maintenance(msg.route)
-
-#these need fleshing out with implementations:
-def got_msg_in_medium(self):
-	return True
-
-def get_msg(self):
-	return "hello"
-
-#leave out route-cache stuff for now.
-def route_cache_remove(self, broken_link):
-	pass
-
-def determine_broken_link(self, msg):
-	return "hello"
-
-def process_msg_buffer(self):
-	if len(self.msg_buffer) > 0:
-		for msg in self.msg_buffer:
-			if msg.timeinbuffer > self.time_limit:
-				self.msg_buffer.remove(msg)
-		
-		msg = self.msg_buffer[0]
-		del self.msg_buffer[0]
-		dest = msg.destination
-		if route_cache_contains(dest):
-			route = route_cache_finds(dest)
-			forward(msg, route)
-		else:
-			route_discovery(msg)
-
-def route_cache_contains(self, destination):
-	return True
-
-def route_cache_finds(self, destination):
-	return ""
-
-#call down to the network.send() function
-def forward(self, msg, route):
-	pass
-
-#flesh this out
-def broadcast(self, msg, type):
-	pass
-
-#check for a DSR identifier of some sort in the data received.
-def is_data_packet(self, msg):
-	return True
-
-
-def route_discovery(self, msg):
-	#do something regarding exponetial back off
-	#to limit how fast new route discovery is performed for 'old' messages in buffer
-	request_msg = route_request_msg(msg, msg.dest)
-	request_msg.hopcount = 0
-	request_msg.hoplimit = self.hop_limit
-	broadcast(request_msg, "Request")
-
-class route_request_msg(object):
-	def __init__(self, msg, dest):
-		self.msg = msg
-		self.dest = dest
-
-class route_reply_msg(object):
-	def __init__(self, msg, dest):
-		self.msg = msg
-		self.dest = dest
-
-class route_error_msg(object):
-	def __init__(self, broken_link):
-		self.broken_link = broken_link
-
-
-def route_request(self, msg):
-	route_maintenance(msg.route)
 	
-	if msg.dest == "ME":
-		route_reply(msg, "Empty", False)
-	elif msg.sourceroute.has(self):
-		del msg
-	elif msg.id in self.msg_id_table:
-		del msg
-	elif msg.hop_count > msg.hop_limit:
-		del msg
-	elif route_cache_contains(msg.destination):
-		route = route_cache_finds(msg.dest)
-		route_reply(msg, route, True)
-	else:
-		msg.route_add(self.address)
-		msg.hop_count_increment()
-		broadcast(msg, "Request")
-
-def route_reply(self, msg, route, fromcache):
-	#Need some sort of delay to limit how fast a route reply is sent back
-	#To prevent a route reply storm
-	if got_msg_in_medium():
-		nmsg = get_msg();
-		if is_data_packet(nmsg):
-			if (nmsg.dest == msg.dest) and (nmsg.source == msg.source):
-				return
-	#Dont send route reply as the initiator have received a (possible shorter)
-	#route reply and is transmitting the intended packet
+	#these need fleshing out with implementations:
+	def got_msg_in_medium(self):
+		return True
 	
-	if route.empty:
-		route = msg.sourceroute.reverse
-		reply_msg = route_reply_msg(msg,route)
-		forward(reply_msg, route)
-	else:
-		if fromcache:
-			route = route.reverse + msg.sourceroute.reverse
-		reply_msg = route_reply_msg(msg,route)
-		forward(reply_msg, route)
-
-def route_error(self, msg, issource):
-	if issource:
-		pass
-		broken_link = determine_broken_link(msg)
-		route_cache_remove(broken_link)
-		error_msg = route_error_msg(broken_link)
-		broadcast(error_msg, "error")
-	else:
-		pass
-		broken_link = determine_broken_link(msg)
-		route_cache_remove(broken_link)
-		broadcast(msg, "error")
+	def get_msg(self):
+		return "hello"
 	
-	if msg.iniator_address == self.address:
-		process_msg_buffer()
-
-
-def deliver_data(self, msg, route):
-	if msg.dest == self.address:
+	#leave out route-cache stuff for now.
+	def route_cache_remove(self, broken_link):
 		pass
-	#senf to application layer
-	else:
-		num_times_transmitted = 0;
-		while (num_times_transmitted < self.max_num_retransmissions):
-			forward(msg, route)
-			got_msg_in_medium()
-			nmsg = get_msg()
-			if nmsg.type == "Acknowledgemet":
-				break
+	
+	def determine_broken_link(self, msg):
+		return "hello"
+	
+	def process_msg_buffer(self):
+		if len(self.msg_buffer) > 0:
+			for msg in self.msg_buffer:
+				if msg.timeinbuffer > self.time_limit:
+					self.msg_buffer.remove(msg)
+			
+			msg = self.msg_buffer[0]
+			del self.msg_buffer[0]
+			dest = msg.destination
+			if route_cache_contains(dest):
+				route = route_cache_finds(dest)
+				forward(msg, route)
 			else:
-				num_times_transmitted=+1
+				route_discovery(msg)
+	
+	def route_cache_contains(self, destination):
+		return True
+	
+	def route_cache_finds(self, destination):
+		return ""
+	
+	#call down to the network.send() function
+	def forward(self, msg, route):
+		pass
+	
+	#flesh this out
+	def broadcast(self, msg, type):
+		pass
+	
+	#check for a DSR identifier of some sort in the data received.
+	def is_data_packet(self, msg):
+		return True
+	
+	
+	def route_discovery(self, msg):
+		#do something regarding exponetial back off
+		#to limit how fast new route discovery is performed for 'old' messages in buffer
+		request_msg = route_request_msg(msg, msg.dest)
+		request_msg.hopcount = 0
+		request_msg.hoplimit = self.hop_limit
+		broadcast(request_msg, "Request")
+	
+	class route_request_msg(object):
+		def __init__(self, msg, dest):
+			self.msg = msg
+			self.dest = dest
+	
+	class route_reply_msg(object):
+		def __init__(self, msg, dest):
+			self.msg = msg
+			self.dest = dest
+	
+	class route_error_msg(object):
+		def __init__(self, broken_link):
+			self.broken_link = broken_link
+	
+	
+	def route_request(self, msg):
+		route_maintenance(msg.route)
 		
-		if (num_times_transmitted > self.max_num_retransmissions):
-			route_error(msg, True)
-
-def route_maintenance(self, route):
-	pass
+		if msg.dest == "ME":
+			route_reply(msg, "Empty", False)
+		elif msg.sourceroute.has(self):
+			del msg
+		elif msg.id in self.msg_id_table:
+			del msg
+		elif msg.hop_count > msg.hop_limit:
+			del msg
+		elif route_cache_contains(msg.destination):
+			route = route_cache_finds(msg.dest)
+			route_reply(msg, route, True)
+		else:
+			msg.route_add(self.address)
+			msg.hop_count_increment()
+			broadcast(msg, "Request")
+	
+	def route_reply(self, msg, route, fromcache):
+		#Need some sort of delay to limit how fast a route reply is sent back
+		#To prevent a route reply storm
+		if got_msg_in_medium():
+			nmsg = get_msg();
+			if is_data_packet(nmsg):
+				if (nmsg.dest == msg.dest) and (nmsg.source == msg.source):
+					return
+		#Dont send route reply as the initiator have received a (possible shorter)
+		#route reply and is transmitting the intended packet
+		
+		if route.empty:
+			route = msg.sourceroute.reverse
+			reply_msg = route_reply_msg(msg,route)
+			forward(reply_msg, route)
+		else:
+			if fromcache:
+				route = route.reverse + msg.sourceroute.reverse
+			reply_msg = route_reply_msg(msg,route)
+			forward(reply_msg, route)
+	
+	def route_error(self, msg, issource):
+		if issource:
+			pass
+			broken_link = determine_broken_link(msg)
+			route_cache_remove(broken_link)
+			error_msg = route_error_msg(broken_link)
+			broadcast(error_msg, "error")
+		else:
+			pass
+			broken_link = determine_broken_link(msg)
+			route_cache_remove(broken_link)
+			broadcast(msg, "error")
+		
+		if msg.iniator_address == self.address:
+			process_msg_buffer()
+	
+	
+	def deliver_data(self, msg, route):
+		if msg.dest == self.address:
+			pass
+		#senf to application layer
+		else:
+			num_times_transmitted = 0;
+			while (num_times_transmitted < self.max_num_retransmissions):
+				forward(msg, route)
+				got_msg_in_medium()
+				nmsg = get_msg()
+				if nmsg.type == "Acknowledgemet":
+					break
+				else:
+					num_times_transmitted=+1
+			
+			if (num_times_transmitted > self.max_num_retransmissions):
+				route_error(msg, True)
+	
+	def route_maintenance(self, route):
+		pass
