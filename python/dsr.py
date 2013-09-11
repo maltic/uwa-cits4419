@@ -26,6 +26,15 @@ class Packet(object):
 		self.contents = ""
 		self.id = -1
 
+class RouteCache(object):
+    def __init(self):
+        self.__edge_list = []
+    def insert_path(self, path):
+        pass
+    def update(self):
+        pass
+    
+
 #works like a constructor
 #make a packet out of some arguments
 def make_packet(type, path, contents):
@@ -44,7 +53,7 @@ def parse_packet(packetStr):
 
 class DSR(object):
 	def __init__(self):
-		self.__route_cache = []
+		self.__route_cache = RouteCache()
 		self.__receive_queue = []
 		self.__send_queue = []
 		self.__send_buffer = []
