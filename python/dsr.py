@@ -13,23 +13,33 @@ class DSRMessageType:
 	REPLY = 2
 	ERROR = 3
 	SEND = 4
+	ERROR = 5
 
 next_packet_id = 0
 
-def make_packet(type, path, contents):
-	next_packet_id += 1
-	""
 
-class ParsedPacket(object):
-	def __init__(self, packet):
+class Packet(object):
+	def __init__(self):
 		#work out what these are by parsing packet
 		self.type = ""
 		self.path = []
 		self.contents = ""
 		self.id = -1
-	def as_packet(self):
-		#convert into a valid packet
-		return make_packet(self.type, self.path, self.contents)
+
+#works like a constructor
+#make a packet out of some arguments
+def make_packet(type, path, contents):
+    pkt = Packet()
+    pkt.type = type
+    pkt.path = path
+    pkt.contents = contents
+    return pkt
+	
+#works like a constructor	
+#parses a network string into a packet object
+def parse_packet(packetStr):
+    pkt = Packet()
+    return pkt
 
 
 class DSR(object):
@@ -38,14 +48,19 @@ class DSR(object):
 		self.__receive_queue = []
 		self.__send_queue = []
 		self.__send_buffer = []
-		self.__done_buffer
+		self.__done_buffer = []
+		self.__awaiting_acknowledgement_buffer = []
 		self.ID = ""
 
-	def __network_broadcast(msg):
+	def __network_broadcast(pkt):
+	    pkt.id = next_packet_id
+	    next_packet_id += 1
 		#need to work out how to use the network layer
 		return
 
-	def __network_sendto(msg, toID):
+	def __network_sendto(pkt, toID):
+	    pkt.id = next_packet_id
+	    next_packet_id += 1
 		#need to work out how to use the network layer
 		return
 
@@ -91,11 +106,11 @@ class DSR(object):
 
 
 	def receive_packet(self, pkt):
-		self.receive_queue.append(ParsedPacket(pkt))
+		self.__receive_queue.append(parse_packet(pkt))
 
 
 	def send_message(self, contents, toID):
-		self.send_queue.append((contents, toID))
+		self.__send_queue.append((contents, toID))
 
 	def pop_messages(self):
 		tmp = self.__done_buffer
