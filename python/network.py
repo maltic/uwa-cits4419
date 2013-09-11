@@ -36,7 +36,9 @@ def send(msg, addr):
 	
 	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-	sock.sendto(msg, addr)
+	#to enumlate a broadcast L2 network, just broadcast it at L3.
+	#ignore the address that the user has sent to me.
+	sock.sendto(msg, '255.255.255.255')
 	
 	print "sent message", msg
 
