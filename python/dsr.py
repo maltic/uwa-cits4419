@@ -79,7 +79,7 @@ class DSR(object):
 			__network_sendto(make_packet(DSRMessageType.REPLY, rev_path, msg.path[0]), rev_path[0])
 		else:
 			msg.path.append(self.ID)
-			__network_broadcast(make_packet(DSRMessageType.REQUEST, msg.path, msg.contents)
+			__network_broadcast(make_packet(DSRMessageType.REQUEST, msg.path, msg.contents))
 
 	def __route_reply(self, msg):
 		#if i am the originator of the message then remove it from the send buffer
@@ -93,8 +93,16 @@ class DSR(object):
 		#i havn't added this yet because I am not sure how the network layer will let us know
 
 	def __route_error(self, msg):
+		if msg.path[-1] == self.ID:
+		#msg.contents should be the broken link
+		#remove the broken link from route cache
+			_network_broadcast(make_packet(DSRMessageType.ERR0R, msg.path, msg.contents))
+		else:
+		#remove broken link
+		#here should be just forwarding the error msg
+			_network_broadcast(make_packet(DSRMessageType.ERR0R, msg.path, msg.contents))
+			
 		#not implemented yet, because there is not route cache
-		return
 
 	def __route_send(self, msg):
 		#if I am the recipient, yay! add it to the done_buffer
