@@ -27,12 +27,20 @@ class Packet(object):
 		self.id = -1
 
 class RouteCache(object):
-    def __init(self):
-        self.__edge_list = []
-    def insert_path(self, path):
-        pass
-    def update(self):
-        pass
+    def __init(self, myID):
+        self.__edge_list = [[]]
+        self.__me = myID
+    def offer_route(self, route):
+    	#attach the route information into the cache
+    	#should also add the reverse route
+    	return
+    def remove_link(self, link):
+    	#removes a given link from the cache
+    	return
+    def get_path(self, toID):
+    	#first expires any old routes, then...
+    	#gets a route to the id specified
+    	return []
     
 
 #works like a constructor
@@ -53,13 +61,13 @@ def parse_packet(packetStr):
 
 class DSR(object):
 	def __init__(self):
-		self.__route_cache = RouteCache()
 		self.__receive_queue = []
 		self.__send_queue = []
 		self.__send_buffer = []
 		self.__done_buffer = []
 		self.__awaiting_acknowledgement_buffer = []
 		self.ID = ""
+		self.__route_cache = RouteCache(self.ID)
 
 	def __network_broadcast(pkt):
 	    pkt.id = next_packet_id
@@ -119,7 +127,7 @@ class DSR(object):
 
 		#start route discovery
 		self.__send_buffer.append(msg)
-		self.__network_broadcast(make_packet(DSRMessageType.REQUEST, self.ID, toID))
+		self.__network_broadcast(make_packet(DSRMessageType.REQUEST, [self.ID], toID))
 
 
 	def receive_packet(self, pkt):
