@@ -30,5 +30,22 @@ def receive(port):
         connection_list.append(sock)
 
         while 1:
-                read_sockets,write_sockets,error_sockets
+                read_sockets,write_sockets,error_sockets=select(connection_list,[],[])
+
+                for s in read_sockets:
+                        if s == sock:
+                                sockfd,addr=sock.accept()
+                                connection_list.append(sockfd)
+                                send("Sending message to %s\n" %addr, sockfd)
+                        else:
+                                try:
+                                        data=s.recv(input_buffer)
+                                        if data:
+                                                send(data,s)
+                                except:
+                                        send(data,s)
+                                        s.close()
+                                        connection_list.remove(s)
+                                        continue
+        sock.cloe()
 #end def
