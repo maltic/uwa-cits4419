@@ -2,29 +2,33 @@
 
 import network
 import threading
+import socket, select
 
 input_buffer = []
+connection_list = []
 
 def send(msg, recepient)
-
-	#no route lookup done here just sent the destiantion as 255.255.255.255 and send.
-	network.send(msg, '255.255.255.255')
+        for recipient in connection_list:
+                try:
+                        recipient.send(msg)
+                except:
+                        recipient.close()
+                        connection_list.remove(recipient)
+	
 
 #end def
 
-def receive():
-	ret = input_buffer
-	input_buffer = []
-	
-	return ret
+#receive connection and append the connection to the list
+def receive(port):
+        input_buffer = 4096
+        
+        sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+        s.bind(("0.0.0.0",port))
+        sock.listen(10)'
 
+        connection_list.append(sock)
+
+        while 1:
+                read_sockets,write_sockets,error_sockets
 #end def
-
-
-#basic run loop for processing receives.
-while 1
-	input_buf = network.receive()
-
-	
-	
-	
