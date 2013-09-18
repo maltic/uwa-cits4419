@@ -1,6 +1,6 @@
 import socket
 import threading
-import SocketServer
+import socketserver
 
 # Client and server components rolled into one
 # Server is started on a new thread and each of up to 10 concurrent connections are dealt with on their own threads.
@@ -12,7 +12,7 @@ RECV_BUFFER = 1024
 #layerAbove
 
 #Subclass the base handler and add our functionality.
-class ReceiveHandler(SocketServer.BaseRequestHandler):
+class ReceiveHandler(socketserver.BaseRequestHandler):
 
   def handle(self):
   
@@ -23,15 +23,15 @@ class ReceiveHandler(SocketServer.BaseRequestHandler):
     
     #input_buffer.append(data)
     
-    #print "Received data from {}".format(self.client_address[0])
-    #print data
+    #print("Received data from {}".format(self.client_address[0]))
+    #print(data)
   
   #end def
 
 #end class  
 
 #Sub-class the UDP server and enable threading
-class ServerThreaded(SocketServer.ForkingMixIn, SocketServer.UDPServer):
+class ServerThreaded(socketserver.ForkingMixIn, socketserver.UDPServer):
   pass
     
 def send(msg, addr):
@@ -43,7 +43,7 @@ def send(msg, addr):
   #ignore the address that the user has sent to me.
   sock.sendto(msg, '255.255.255.255')
   
-  print "sent message", msg
+  print("sent message", msg)
 
   sock.close()
   
