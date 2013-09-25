@@ -1,3 +1,9 @@
+#Coding conventions
+
+* Use 2 spaces to indent; no tabs
+* Make sure your code and library usage is Python 3 compliant; there are differences between that and Python 2 (things named differently, print working differently, etc)
+
+
 #UDP Proof of Concept Protocol Specification
 
 Message: is a string sent between nodes via a UDP socket.
