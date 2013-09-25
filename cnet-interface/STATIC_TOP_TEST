@@ -1,0 +1,28 @@
+compile			= "-g dummy-net.c broadcast-link.c "
+
+minmessagesize	= 500 bytes
+maxmessagesize	= 1000 bytes
+messagerate = 1000000 usec
+
+mapwidth	= 30
+mapheight	= 30
+mapgrid		= 5
+mapscale	= 0.125
+
+probframecorrupt = 4 
+mobile raspberryPi1 { 
+x=10, y=10
+wlan { }
+}
+mobile raspberryPi2 { 
+x=20,y=20
+wlan { } 
+
+}
+
+mobile raspberryPi3 { x=10,y=20
+wlan { } }
+
+
+mobile raspberryPi4 { x=20,y=10
+wlan { } }
