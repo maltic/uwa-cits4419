@@ -1,0 +1,41 @@
+compile			= "-g walk.c dummy-net.c broadcast-link.c"
+
+minmessagesize	= 500 bytes
+maxmessagesize	= 1000 bytes
+messagerate = 1000000 usec
+
+mapwidth	= 200
+mapheight	= 200
+mapgrid		= 5
+mapscale	= 0.125
+
+probframecorrupt = 4 
+mobile rPi1 { 
+x=10, y=10
+wlan { }
+}
+mobile rPi2 { 
+x=20,y=20
+wlan { } 
+
+}
+
+mobile rPi3 { x=10,y=20
+wlan { } }
+
+
+mobile rPi4 { x=20,y=10
+wlan { } }
+
+mobile rPi5 {
+x=0,y=0
+wlan{}
+}
+mobile rPi6 {
+x=0,y=0
+wlan{}
+}
+mobile rPi7 {
+x=0,y=0
+wlan{}
+}
