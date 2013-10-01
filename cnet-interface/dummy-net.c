@@ -91,6 +91,7 @@ EVENT_HANDLER(reboot_node)
 {
 	link_init();
 	net_init();
+	walking_init();
 	CHECK(CNET_enable_application(ALLNODES));
 }
 

@@ -34,6 +34,7 @@ typedef struct
 /*TIMERS*/
 #define EV_LINK_SEND EV_TIMER1
 #define EV_DO_ROUTING EV_TIMER2
+#define EV_WALKING EV_TIMER9
 
 /* broadcast-link.c */
 void link_send_data( void * msg, int len);
@@ -43,4 +44,6 @@ void link_init();
 void net_recv( void * msg, int len);
 void net_init();
 
-
+/* walking.c */
+void get_rand_pos(CnetPosition *new, CnetPosition max);
+void walking_init();
