@@ -25,6 +25,7 @@ class Packet:
     self.contents = ""
     self.id = -1
     self.fromID = -1
+    self.originatorID = -1
 
 class RouteCache:
   def __init(self, myID):
@@ -45,6 +46,15 @@ class RouteCache:
     #gets a route to the id specified
     return []
     
+def make_packet_o(type,path,contents,originator):
+  pkt = Packet()
+  pkt.type = type
+  pkt.path = path
+  pkt.contents = contents
+  pkt.id = next_packet_id
+  pkt.originatorID = originator
+  next_packet_id += 1
+  return pkt
 
 #works like a constructor
 #make a packet out of some arguments
@@ -54,6 +64,7 @@ def make_packet(type, path, contents):
   pkt.path = path
   pkt.contents = contents
   pkt.id = next_packet_id
+  pkt.originatorID = pkt.id
   next_packet_id += 1
   return pkt
   
@@ -90,13 +101,13 @@ class DSR:
     if msg.contents == self.ID:
       msg.path.append(self.ID)
       rev_path = reversed(msg.path)
-      __network_sendto(make_packet(DSRMessageType.REPLY, rev_path, msg.path[0]), rev_path[0])
+      __network_sendto(make_packet_o(DSRMessageType.REPLY, rev_path, msg.path[0], msg.originatorID), rev_path[1])
     elif self.__ID in msg.path:
       #avoid cycles
       pass
     else:
       msg.path.append(self.ID)
-      __network_broadcast(make_packet(DSRMessageType.REQUEST, msg.path, msg.contents))
+      __network_broadcast(make_packet_o(DSRMessageType.REQUEST, msg.path, msg.contents, msg.originatorID))
 
   def __route_reply(self, msg):
     #if i am the originator of the message then remove it from the send buffer
@@ -104,11 +115,11 @@ class DSR:
     if msg.contents == self.ID:
       rev_path = reversed(msg.path)
       next_index = rev_path.index(self.ID)+1
-      contents = self.__remove_from_send_buffer(msg)
+      contents = self.__remove_from_send_buffer(msg.originatorID)
       __network_sendto(make_packet(DSRMessageType.SEND, rev_path, contents), rev_path[next_index])
     else:
       next_index = msg.path.index(self.ID)+1
-      __network_sendto(make_packet(DSRMessageType.REPLY, msg.path, msg.contents), msg.path[next_index])
+      __network_sendto(make_packet_o(DSRMessageType.REPLY, msg.path, msg.contents, msg.originatorID), msg.path[next_index])
     #need to start route discovery if a link is broken
     #i havn't added this yet because I am not sure how the network layer will let us know
 
@@ -142,12 +153,13 @@ class DSR:
     #lookup route cache not implemented
 
     #start route discovery
-    self.__send_buffer.append((msg, toID))
-    self.__network_broadcast(make_packet(DSRMessageType.REQUEST, [self.ID], toID))
+    temp = make_packet(DSRMessageType.REQUEST, [self.ID], toID)
+    self.__send_buffer.append((msg, temp.originatorID))
+    self.__network_broadcast(temp)
 
-  def __msg_acknowledgement(msg):
+  def __msg_acknowledgement(self, msg):
     for ack in self.__awaiting_acknowledgement_buffer:
-      if ack.id == msg.id:
+      if ack.id == msg.originatorID:
         self.__awaiting_acknowledgement_buffer.remove(ack)
         return
 
@@ -165,7 +177,7 @@ class DSR:
 
   def __remove_from_send_buffer(self, ID):
     for send in self.__send_buffer:
-      if (send[1] == ID):
+      if send[1] == ID:
         msg = send[0]
         self.__send_buffer.remove(send)
         return msg
@@ -174,7 +186,7 @@ class DSR:
     for msg in self.__receive_queue:
       #send acknowledgement message back
       if msg.fromID != -1: #-1 fromID means broadcast
-        self.__network_sendto(make_packet(DSRMessageType.ACK, [], msg.id))
+        self.__network_sendto(make_packet_o(DSRMessageType.ACK, [], msg.id, msg.originatorID), msg.fromID)
       if msg.type == DSRMessageType.REQUEST:
         self.__route_request(msg)
       elif msg.type == DSRMessageType.REPLY:
