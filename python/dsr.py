@@ -15,8 +15,7 @@ class DSRMessageType:
   REPLY = 2
   ERROR = 3
   SEND = 4
-  ERROR = 5
-  ACK = 6
+  ACK = 5
 
 next_packet_id = 0
 
