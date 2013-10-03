@@ -5,7 +5,10 @@
 #Piggyback route error msgs on a node's new route request.
 
 
-import network
+#import network
+#import simulator_network as network
+import simulator_network
+network = None
 
 class DSRMessageType:
   REQUEST = 1
@@ -76,7 +79,8 @@ def parse_packet(packetStr):
 
 
 class DSR:
-  def __init__(self):
+  def __init__(self, q):
+    network = simulator_network.SimulatorNetwork(q)
     self.__receive_queue = []
     self.__send_queue = []
     self.__send_buffer = []
