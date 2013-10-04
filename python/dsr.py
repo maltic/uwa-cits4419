@@ -8,6 +8,7 @@
 #import network
 #import simulator_network as network
 import simulator_network
+import time
 network = None
 
 class DSRMessageType:
@@ -18,6 +19,8 @@ class DSRMessageType:
   ACK = 5
 
 next_packet_id = 0
+MAX_transmissions = 6
+MAX_time_between_ack = 3
 
 class Packet:
   def __init__(self):
@@ -89,14 +92,15 @@ class DSR:
     self.__route_cache = RouteCache(self.ID)
     self.__seen = {} # set of (id, fromID) tuples representing which pakcets have been seen already
 
-  def __network_broadcast(pkt):
+  def __network_broadcast(self, pkt):
     pkt.fromID = -1
     #need to work out how to use the network layer
     return
 
-  def __network_sendto(pkt, toID):
+  def __network_sendto(self, pkt, toID):
     pkt.fromID = self.ID
-    self.__awaiting_acknowledgement_buffer.append(pkt)
+    self.__add_to_ack_buffer(pkt)
+    
     #need to work out how to use the network layer
     return
 
@@ -127,23 +131,17 @@ class DSR:
     #i havn't added this yet because I am not sure how the network layer will let us know
 
   def __route_error(self, msg):
-    if msg.path[-1] == self.ID:
-    #msg.contents should be the broken link
-    #remove the broken link from route cache
-      _network_broadcast(make_packet(DSRMessageType.ERR0R, msg.path, msg.contents))
-    else:
-    #remove broken link
-    #here should be just forwarding the error msg
-      _network_broadcast(make_packet(DSRMessageType.ERR0R, msg.path, msg.contents))
-      
+      #self.__remove_from_cache(msg.contents)
+      msg.path.append(self.ID)
+      _network_broadcast(make_packet(DSRMessageType.ERR0R, msg.path, msg.contents))      
     #not implemented yet, because there is not route cache
 
   def __route_send(self, msg):
     #if I am the recipient, yay! add it to the done_buffer
     #if not, send it to the next guy on the list
 
-    from_index = msg.path.index(self.ID)-1
-    __network_sendto(make_packet(DSRMessageType.ACK, msg.path, self.ID), msg.path[from_index])
+    #from_index = msg.path.index(self.ID)-1
+    #__network_sendto(make_packet(DSRMessageType.ACK, msg.path, self.ID), msg.path[from_index])
 
     if msg.path[-1] == self.ID:
       self.__done_buffer.append(msg)
@@ -162,7 +160,7 @@ class DSR:
 
   def __msg_acknowledgement(self, msg):
     for ack in self.__awaiting_acknowledgement_buffer:
-      if ack.id == msg.originatorID:
+      if ack[0].id == msg.originatorID:
         self.__awaiting_acknowledgement_buffer.remove(ack)
         return
 
@@ -185,7 +183,34 @@ class DSR:
         self.__send_buffer.remove(send)
         return msg
 
+  def __check_ack_buffer(self):
+    for ack in self.__awaiting_acknowledgement_buffer:
+      if ack[2] > MAX_transmissions:
+        next_index = ack[0].path.index(self.ID)+1
+        broken_link = [self.ID,ack[0].path[next_index]]
+        self.__network_broadcast(make_packet(DSRMessageType.ERR0R, [self.ID], broken_link))
+        self.__awaiting_acknowledgement_buffer.remove(ack)
+      else:
+        end = time.time()
+        elapsed = end - ack[1]
+        if elapsed > MAX_time_between_ack:
+          msg = ack[0]
+          next_index = msg.path.index(self.ID)+1
+          __network_sendto(msg, msg.path[next_index])
+
+  def __add_to_ack_buffer(self, pkt):
+    for ack in self.__awaiting_acknowledgement_buffer:
+      if ack[0] == pkt:
+        start = time.time()
+        timetransmitted = ack[2]+1
+        self.__awaiting_acknowledgement_buffer.remove(ack)
+        self.__awaiting_acknowledgement_buffer.append((pkt,start,timetransmitted))
+        return
+    self.__awaiting_acknowledgement_buffer.append((pkt,start,1))
+
+
   def update(self):
+    self.__check_ack_buffer()
     for msg in self.__receive_queue:
       #send acknowledgement message back
       if msg.fromID != -1: #-1 fromID means broadcast
