@@ -187,8 +187,8 @@ class DSR:
     for ack in self.__awaiting_acknowledgement_buffer:
       if ack[2] > MAX_transmissions:
         next_index = ack[0].path.index(self.ID)+1
-        broken_link = [self.ID,ack[0].path[next_index]]
-        self.__network_broadcast(make_packet(DSRMessageType.ERR0R, [self.ID], broken_link))
+        unreachable_node = ack[0].path[next_index]
+        self.__network_broadcast(make_packet(DSRMessageType.ERR0R, [self.ID],  unreachable_node))
         self.__awaiting_acknowledgement_buffer.remove(ack)
       else:
         end = time.time()
