@@ -9,6 +9,7 @@
 #import simulator_network as network
 import simulator_network
 import time
+import ast
 network = None
 
 class DSRMessageType:
@@ -25,13 +26,15 @@ MAX_time_between_ack = 3
 class Packet:
   def __init__(self):
     #work out what these are by parsing packet
-    self.type = ""
+    self.type = 0
     self.path = []
     self.contents = ""
     self.id = -1
     self.fromID = -1
     self.originatorID = -1
-
+  def toString(self):
+    str(self.type)+"|"+str(self.path)+"|"+self.contents+"|"+str(self.id)+"|"+str(self.fromID)+"|"+str(self.originatorID)
+    
 class RouteCache:
   def __init(self, myID):
     self.__edge_list = [[]]
@@ -77,6 +80,13 @@ def make_packet(type, path, contents):
 #parses a network string into a packet object
 def parse_packet(packetStr):
   pkt = Packet()
+  toks = packetStr.split("|")
+  pkt.type = int(toks[0])
+  pkt.path = ast.literal_eval(toks[1])
+  pkt.contents = toks[2]
+  pkt.id = int(toks[3])
+  pkt.fromID = int(toks[4])
+  pkt.originatorID = int(toks[5])
   return pkt
 
 
@@ -94,14 +104,13 @@ class DSR:
 
   def __network_broadcast(self, pkt):
     pkt.fromID = -1
-    #need to work out how to use the network layer
+    self.network.send(pkt.toString(), -1)
     return
 
   def __network_sendto(self, pkt, toID):
     pkt.fromID = self.ID
     self.__add_to_ack_buffer(pkt)
-    
-    #need to work out how to use the network layer
+    self.network.send(pkt.toString(), toID)
     return
 
   def __route_request(self, msg):
