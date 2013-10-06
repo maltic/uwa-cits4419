@@ -34,7 +34,7 @@ class Packet:
     self.originatorID = -1
     
   def __str__(self):
-    out = [self.type, self.path, self.contents, self.id, self.fromID, self.fromID]
+    out = [self.type, ">".join(self.path), self.contents, self.id, self.fromID, self.fromID]
     return "{}|{}|{}|{}|{}|{}".format(*out)
     
 class RouteCache:
