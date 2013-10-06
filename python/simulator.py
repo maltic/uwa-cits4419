@@ -1,7 +1,9 @@
 import dsr
-from multiprocessing import Process, Pipe
+from multiprocessing import Process, Pipe, freeze_support
 import random
 import time
+import sys
+import string
 
          # x  0  1  2  3  4     y
 CAN_TALK = [ [1, 0, 0, 0, 0], # 0
@@ -15,28 +17,31 @@ CAN_TALK = [ [1, 0, 0, 0, 0], # 0
            
 NUM_NODES = 5
 
-COMM_LOC = 'simulator_communication/'
+COMM_LOC = 'logs/'
 
 def _node_simulation(q, log_to, node_addr, other_nodes):
-  log = open(log_to, 'a')
-  dsr = dsr.DSR(q)
+  sys.stdout = open(log_to, 'a')
+  print('SIMULATOR: Node {} online'.format(node_addr))
+  
+  d = dsr.DSR(q)
   
   while True:
     to = random.choice(other_nodes)
-    contents = 'AAAAA'
+    contents = ''.join([random.choice(string.ascii_letters) for _ in range(6)])
+
+    print('SIMULATOR: Sending "{}" to {}'.format(contents, to))
+    d.send_message(contents, to)
     
-    log.write('Sending ' + contents + ' to ' + str(to))
-    dsr.send_message(contents, to)
+    time.sleep(0.5)
+    d.update()
+    time.sleep(0.5)
     
-    time.sleep(1)
+    frommsg = d.pop_messages()
+    print('SIMULATOR: From messages; {}'.format(frommsg))
+    print()
     
-    log.write('DSR update')
-    dsr.update()
-    
-    time.sleep(1)
-    
-    frommsg = dsr.pop_messages()
-    log.write('From messages; ' + frommsg)
+    sys.stdout.flush()
+    sys.stderr.flush()
 
 class Simulator:
   def __init__(self, num_nodes, talk_matrix):
@@ -45,7 +50,8 @@ class Simulator:
     self.num_nodes = num_nodes
     self.talk_matrix = [ [bool(x) for x in y] for y in talk_matrix ]
     self.processes = [None] * num_nodes
-    self.pipes = [None] * num_nodes
+    self.out_pipes = [None] * num_nodes
+    self.in_pipes = [None] * num_nodes
     
     for i in range(num_nodes):
       out_p, in_c = Pipe()
@@ -65,12 +71,11 @@ class Simulator:
       for i, pipe in enumerate(self.in_pipes):
         while pipe.poll():
           toaddr, msg = pipe.recv()
-          if toaddr == 255:
-            for j, opipe in enumerate(self.out_pipes):
-              if self.can_talk(i, j):
-                opipe.write((i, msg))
-          else:
-            if self.can_talk(i, toaddr):
-              self.out_pipes[toaddr].write((i, msg))
+          for j, opipe in enumerate(self.out_pipes):
+            if self.can_talk(i, j):
+              opipe.send((i, msg))
     
-Simulator(NUM_NODES, CAN_TALK)
+if __name__ == '__main__':
+  freeze_support()
+  s = Simulator(NUM_NODES, CAN_TALK)
+  s.start()

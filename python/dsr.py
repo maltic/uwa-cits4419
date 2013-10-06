@@ -32,11 +32,13 @@ class Packet:
     self.id = -1
     self.fromID = -1
     self.originatorID = -1
-  def toString(self):
-    str(self.type)+"|"+str(self.path)+"|"+self.contents+"|"+str(self.id)+"|"+str(self.fromID)+"|"+str(self.originatorID)
+    
+  def __str__(self):
+    out = [self.type, self.path, self.contents, self.id, self.fromID, self.fromID]
+    return "{}|{}|{}|{}|{}|{}".format(*out)
     
 class RouteCache:
-  def __init(self, myID):
+  def __init__(self, myID):
     self.__edge_list = [[]]
     self.__me = myID
 
@@ -55,6 +57,7 @@ class RouteCache:
     return []
     
 def make_packet_o(type,path,contents,originator):
+  global next_packet_id
   pkt = Packet()
   pkt.type = type
   pkt.path = path
@@ -67,6 +70,7 @@ def make_packet_o(type,path,contents,originator):
 #works like a constructor
 #make a packet out of some arguments
 def make_packet(type, path, contents):
+  global next_packet_id
   pkt = Packet()
   pkt.type = type
   pkt.path = path
@@ -92,7 +96,7 @@ def parse_packet(packetStr):
 
 class DSR:
   def __init__(self, q):
-    network = simulator_network.SimulatorNetwork(q)
+    self.network = simulator_network.SimulatorNetwork(q)
     self.__receive_queue = []
     self.__send_queue = []
     self.__send_buffer = []
@@ -104,13 +108,13 @@ class DSR:
 
   def __network_broadcast(self, pkt):
     pkt.fromID = -1
-    self.network.send(pkt.toString(), -1)
+    self.network.send(str(pkt), -1)
     return
 
   def __network_sendto(self, pkt, toID):
     pkt.fromID = self.ID
     self.__add_to_ack_buffer(pkt)
-    self.network.send(pkt.toString(), toID)
+    self.network.send(str(pkt), toID)
     return
 
   def __route_request(self, msg):
