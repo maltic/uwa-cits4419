@@ -65,8 +65,14 @@ class RouteCache:
 
   def get_path(self, toID):
     #first expires any old routes, then...
+    ##update_cache()
     #gets a route to the id specified
-    return []
+    pathsToId = [link for link in self.__edge_list if link[-1]==myID]
+    minPath = pathsToId[0]
+    for i in pathsToId:
+        if len(minPath) > len(i):
+            minPath = i
+    return minPath
 
 
 class DSR:
