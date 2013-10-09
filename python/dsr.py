@@ -186,6 +186,8 @@ class DSR:
         return
 
   def receive_packet(self, pkt):
+    if pkt.toID != self.ID and pkt.toID != -1:
+      pass #do stuff promiscuously later
     self.__receive_queue.append(Packet.from_str(pkt))
 
   def send_message(self, contents, toID):
