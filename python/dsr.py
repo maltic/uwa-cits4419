@@ -79,7 +79,7 @@ class RouteCache:
 
 class DSR:
   def __init__(self, q):
-    self.network = simulator_network.SimulatorNetwork(q)
+    self.network = simulator_network.SimulatorNetwork(q, self)
     self.next_packet_id = 0
     self.__receive_queue = []
     self.__send_queue = []
