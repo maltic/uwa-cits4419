@@ -124,7 +124,7 @@ class DSR:
   def __route_request(self, msg):
     if msg.contents == self.ID:
       msg.path.append(self.ID)
-      rev_path = reversed(msg.path)
+      rev_path = list(reversed(msg.path))
       self.__network_sendto(self.make_packet_o(DSRMessageType.REPLY, rev_path, msg.path[0], msg.originatorID), rev_path[1])
     elif self.__ID in msg.path:
       #avoid cycles
@@ -137,7 +137,7 @@ class DSR:
     #if i am the originator of the message then remove it from the send buffer
     #if not, then send it to the next guy on the list
     if msg.contents == self.ID:
-      rev_path = reversed(msg.path)
+      rev_path = list(reversed(msg.path))
       next_index = rev_path.index(self.ID)+1
       contents = self.__remove_from_send_buffer(msg.originatorID)
       self.__network_sendto(self.make_packet(DSRMessageType.SEND, rev_path, contents), rev_path[next_index])
