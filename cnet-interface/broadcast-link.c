@@ -6,7 +6,7 @@
  */
 #include "cnet-interface.h"
 
-#define SEND_WAIT 50
+#define SEND_WAIT 100
 
 /*
  * Struct for a frame
@@ -14,22 +14,23 @@
 typedef struct
 {
         FRAMEHEADER h;
-        char            msg[];
+        char            msg[MAX_FRAME_SIZE];
 } FRAME;
 
 
 
-#define FRAME_SIZE(f)      (FRAME_HEADER_SIZE + f.len)
+#define FRAME_SIZE(f)      (FRAME_HEADER_SIZE + f.h.len)
 
 
 QUEUE frame_queue;
 
-void link_send_data(char* msg, int len)
+void link_send_data(void* data, int len)
 {
 	//just enqueue for now
 	FRAME f;
 	f.h.len = len;
 	f.h.checksum = 0;
+	size_t framelen;
 	if(data != NULL)
         {
                 memcpy(f.msg, data, len);
@@ -42,27 +43,27 @@ void link_send_data(char* msg, int len)
         }
         f.h.checksum  = CNET_crc32((unsigned char *)&f, (int)framelen);
 	queue_add(frame_queue,&f,sizeof(f));
-	CNET_start_timer(EV_TIMER1, SEND_WAIT, 0);
+	CNET_start_timer(EV_LINK_SEND, SEND_WAIT, 0);
 }
 
 void reset_send_timer()
 {
         if(queue_nitems(frame_queue) > 0)
         {
-                CNET_start_timer(EV_TIMER1, SEND_WAIT, 0);
+                CNET_start_timer(EV_LINK_SEND, SEND_WAIT, 0);
         }
 }
 
-static EVENT_HANDLER(send_time)
+static EVENT_HANDLER(send_timer)
 {
 	if(CNET_carrier_sense(1)==0)
         {
                 if(queue_nitems(frame_queue) > 0)
                 {
 			size_t len;
-                        FRAME f = queue_remove(frame_queue,&len);
-			size_t framelen = FRAME_HEADER_SIZE + f.len;
-                        CHECK(CNET_write_physical(1, &f, &framelen));
+                        FRAME* f = queue_remove(frame_queue,&len);
+			size_t framelen = FRAME_HEADER_SIZE + f->h.len;
+                        CHECK(CNET_write_physical(1, f, &framelen));
                 }
         }
 	reset_send_timer();
@@ -95,6 +96,6 @@ void link_init()
         /* set mac address */
         /* register CNET handlers for physical ready */
         CHECK(CNET_set_handler(EV_PHYSICALREADY, receive, 0));
-	CHECK(CNET_set_handler(EV_TIMER1, send_timer,0));
+	CHECK(CNET_set_handler(EV_LINK_SEND, send_timer,0));
         frame_queue = queue_new();
 }

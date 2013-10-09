@@ -5,28 +5,52 @@
 #Piggyback route error msgs on a node's new route request.
 
 
-import network
+#import network
+#import simulator_network as network
+import simulator_network
+import time
+import ast
 
 class DSRMessageType:
   REQUEST = 1
   REPLY = 2
   ERROR = 3
   SEND = 4
-  ERROR = 5
+  ACK = 5
 
-next_packet_id = 0
 
+MAX_transmissions = 6
+MAX_time_between_ack = 3
 
 class Packet:
   def __init__(self):
     #work out what these are by parsing packet
-    self.type = ""
+    self.type = 0
     self.path = []
     self.contents = ""
     self.id = -1
-
+    self.fromID = -1
+    self.originatorID = -1
+    
+  def __str__(self):
+    out = [self.type, ">".join(self.path), self.contents, self.id, self.fromID, self.fromID]
+    return "{}|{}|{}|{}|{}|{}".format(*out)
+    
+  #works like a constructor  
+  #parses a network string into a packet object
+  def from_str(packetStr):
+    pkt = Packet()
+    toks = packetStr.split("|")
+    pkt.type = int(toks[0])
+    pkt.path = toks[1].split(">")
+    pkt.contents = toks[2]
+    pkt.id = int(toks[3])
+    pkt.fromID = int(toks[4])
+    pkt.originatorID = int(toks[5])
+    return pkt
+    
 class RouteCache:
-  def __init(self, myID):
+  def __init__(self, myID):
     self.__edge_list = [[]]
     self.__me = myID
 
@@ -41,28 +65,20 @@ class RouteCache:
 
   def get_path(self, toID):
     #first expires any old routes, then...
+    ##update_cache()
     #gets a route to the id specified
-    return []
-    
-
-#works like a constructor
-#make a packet out of some arguments
-def make_packet(type, path, contents):
-  pkt = Packet()
-  pkt.type = type
-  pkt.path = path
-  pkt.contents = contents
-  return pkt
-  
-#works like a constructor  
-#parses a network string into a packet object
-def parse_packet(packetStr):
-  pkt = Packet()
-  return pkt
+    pathsToId = [link for link in self.__edge_list if link[-1]==myID]
+    minPath = pathsToId[0]
+    for i in pathsToId:
+        if len(minPath) > len(i):
+            minPath = i
+    return minPath
 
 
 class DSR:
-  def __init__(self):
+  def __init__(self, q):
+    self.network = simulator_network.SimulatorNetwork(q)
+    self.next_packet_id = 0
     self.__receive_queue = []
     self.__send_queue = []
     self.__send_buffer = []
@@ -70,71 +86,103 @@ class DSR:
     self.__awaiting_acknowledgement_buffer = []
     self.ID = ""
     self.__route_cache = RouteCache(self.ID)
+    self.__seen = {} # set of (id, fromID) tuples representing which pakcets have been seen already
 
-  def __network_broadcast(pkt):
-    pkt.id = next_packet_id
-    next_packet_id += 1
-    #need to work out how to use the network layer
+  #works like a constructor
+  #make a packet out of some arguments
+  def make_packet(self, type, path, contents):
+    pkt = Packet()
+    pkt.type = type
+    pkt.path = path
+    pkt.contents = contents
+    pkt.id = self.next_packet_id
+    pkt.originatorID = pkt.id
+    self.next_packet_id += 1
+    return pkt
+    
+  def make_packet_o(self, type, path, contents, originator):
+    pkt = Packet()
+    pkt.type = type
+    pkt.path = path
+    pkt.contents = contents
+    pkt.id = self.next_packet_id
+    pkt.originatorID = originator
+    self.next_packet_id += 1
+    return pkt
+    
+  def __network_broadcast(self, pkt):
+    pkt.fromID = -1
+    self.network.send(str(pkt), -1)
     return
 
-  def __network_sendto(pkt, toID):
-    pkt.id = next_packet_id
-    next_packet_id += 1
-    #need to work out how to use the network layer
+  def __network_sendto(self, pkt, toID):
+    pkt.fromID = self.ID
+    self.__add_to_ack_buffer(pkt)
+    self.network.send(str(pkt), toID)
     return
 
   def __route_request(self, msg):
     if msg.contents == self.ID:
-      rev_path = reversed(msg.path)
-      __network_sendto(make_packet(DSRMessageType.REPLY, rev_path, msg.path[0]), rev_path[0])
+      msg.path.append(self.ID)
+      rev_path = list(reversed(msg.path))
+      self.__network_sendto(self.make_packet_o(DSRMessageType.REPLY, rev_path, msg.path[0], msg.originatorID), rev_path[1])
+    elif self.__ID in msg.path:
+      #avoid cycles
+      pass
     else:
       msg.path.append(self.ID)
-      __network_broadcast(make_packet(DSRMessageType.REQUEST, msg.path, msg.contents))
+      self.__network_broadcast(self.make_packet_o(DSRMessageType.REQUEST, msg.path, msg.contents, msg.originatorID))
 
   def __route_reply(self, msg):
     #if i am the originator of the message then remove it from the send buffer
     #if not, then send it to the next guy on the list
     if msg.contents == self.ID:
-      self.__send_buffer.remove(msg)
+      rev_path = list(reversed(msg.path))
+      next_index = rev_path.index(self.ID)+1
+      contents = self.__remove_from_send_buffer(msg.originatorID)
+      self.__network_sendto(self.make_packet(DSRMessageType.SEND, rev_path, contents), rev_path[next_index])
     else:
       next_index = msg.path.index(self.ID)+1
-      __network_sendto(make_packet(DSRMessageType.REPLY, msg.path, msg.contents), msg.path[next_index])
+      self.__network_sendto(self.make_packet_o(DSRMessageType.REPLY, msg.path, msg.contents, msg.originatorID), msg.path[next_index])
     #need to start route discovery if a link is broken
     #i havn't added this yet because I am not sure how the network layer will let us know
 
   def __route_error(self, msg):
-    if msg.path[-1] == self.ID:
-    #msg.contents should be the broken link
-    #remove the broken link from route cache
-      _network_broadcast(make_packet(DSRMessageType.ERR0R, msg.path, msg.contents))
-    else:
-    #remove broken link
-    #here should be just forwarding the error msg
-      _network_broadcast(make_packet(DSRMessageType.ERR0R, msg.path, msg.contents))
-      
+      #self.__remove_from_cache(msg.contents)
+      msg.path.append(self.ID)
+      self._network_broadcast(self.make_packet(DSRMessageType.ERR0R, msg.path, msg.contents))      
     #not implemented yet, because there is not route cache
 
   def __route_send(self, msg):
     #if I am the recipient, yay! add it to the done_buffer
     #if not, send it to the next guy on the list
+
+    #from_index = msg.path.index(self.ID)-1
+    #__network_sendto(self.make_packet(DSRMessageType.ACK, msg.path, self.ID), msg.path[from_index])
+
     if msg.path[-1] == self.ID:
       self.__done_buffer.append(msg)
     else:
       next_index = msg.path.index(self.ID)+1
-      __network_sendto(make_packet(DSRMessageType.SEND, msg.path, msg.contents), msg.path[next_index])
+      self.__network_sendto(self.make_packet(DSRMessageType.SEND, msg.path, msg.contents), msg.path[next_index])
     #need to start route discovery if a link is broken
 
-  def __route_discover(self, toID):
+  def __route_discover(self, msg, toID):
     #lookup route cache not implemented
 
     #start route discovery
-    self.__send_buffer.append(msg)
-    self.__network_broadcast(make_packet(DSRMessageType.REQUEST, [self.ID], toID))
+    temp = self.make_packet(DSRMessageType.REQUEST, [self.ID], toID)
+    self.__send_buffer.append((msg, temp.originatorID))
+    self.__network_broadcast(temp)
 
+  def __msg_acknowledgement(self, msg):
+    for ack in self.__awaiting_acknowledgement_buffer:
+      if ack[0].id == msg.originatorID:
+        self.__awaiting_acknowledgement_buffer.remove(ack)
+        return
 
   def receive_packet(self, pkt):
-    self.__receive_queue.append(parse_packet(pkt))
-
+    self.__receive_queue.append(Packet.from_str(pkt))
 
   def send_message(self, contents, toID):
     self.__send_queue.append((contents, toID))
@@ -144,8 +192,45 @@ class DSR:
     self.__done_buffer = []
     return tmp
 
+  def __remove_from_send_buffer(self, ID):
+    for send in self.__send_buffer:
+      if send[1] == ID:
+        msg = send[0]
+        self.__send_buffer.remove(send)
+        return msg
+
+  def __check_ack_buffer(self):
+    for ack in self.__awaiting_acknowledgement_buffer:
+      if ack[2] > MAX_transmissions:
+        next_index = ack[0].path.index(self.ID)+1
+        unreachable_node = ack[0].path[next_index]
+        self.__network_broadcast(self.make_packet(DSRMessageType.ERR0R, [self.ID],  unreachable_node))
+        self.__awaiting_acknowledgement_buffer.remove(ack)
+      else:
+        end = time.time()
+        elapsed = end - ack[1]
+        if elapsed > MAX_time_between_ack:
+          msg = ack[0]
+          next_index = msg.path.index(self.ID)+1
+          self.__network_sendto(msg, msg.path[next_index])
+
+  def __add_to_ack_buffer(self, pkt):
+    for ack in self.__awaiting_acknowledgement_buffer:
+      if ack[0] == pkt:
+        start = time.time()
+        timetransmitted = ack[2]+1
+        self.__awaiting_acknowledgement_buffer.remove(ack)
+        self.__awaiting_acknowledgement_buffer.append((pkt,start,timetransmitted))
+        return
+    self.__awaiting_acknowledgement_buffer.append((pkt,start,1))
+
+
   def update(self):
+    self.__check_ack_buffer()
     for msg in self.__receive_queue:
+      #send acknowledgement message back
+      if msg.fromID != -1: #-1 fromID means broadcast
+        self.__network_sendto(self.make_packet_o(DSRMessageType.ACK, [], msg.id, msg.originatorID), msg.fromID)
       if msg.type == DSRMessageType.REQUEST:
         self.__route_request(msg)
       elif msg.type == DSRMessageType.REPLY:
@@ -154,206 +239,11 @@ class DSR:
         self.__route_error(msg)
       elif self.type == DSRMessageType.SEND:
         self.__route_send(msg)
+      elif self.type == DSRMessageType.ACK:
+        self.__msg_acknowledgement(msg)
     for send in self.__send_queue:
       self.__route_discover(send[0], send[1])
     self.__receive_queue = []
     self.__send_queue = []
+    #need to add exponential backoff from acknoledgement messages and error propagation
     
-    
-'''
-
-# Throws an exception if something goes wrong, otherwise returns nothing
-def send(msg, recipient):
-  # Call network
-  return
-
-# Returns [("Message 1', 1), ('Message 2', 2), ...]
-# A list of tuples of the format (msg, sender)
-# If there are no messages, the function will return an empty list
-def recieve():
-  # Call network
-  return []
-
-class DSR:
-  route_cache = []
-  address_table = []
-  msg_id_table = []
-  msg_buffer = []
-  timelimit = 5
-  exponetial_backoff_time = 0
-  hop_limit = 3
-  max_num_retransmission = 5
-  
-  
-  def __init__(self):
-    self.address = "blah"
-  
-  def run(self):
-    while True:
-      process_msg_buffer()
-      #scan medium for messages
-      if got_msg_in_medium():
-        msg = get_msg();
-        if msg == "route request":
-          route_request(msg)
-        elif msg == "route reply":
-          route_reply(msg, msg.route, False)
-        elif msg == "data packet":
-          deliver_data(msg, msg.route)
-        elif msg == "route error":
-          route_error(msg, False)
-        else:
-          route_maintenance(msg.route)
-        route_maintenance(msg.route)
-  
-  #these need fleshing out with implementations:
-  def got_msg_in_medium(self):
-    return True
-  
-  def get_msg(self):
-    return "hello"
-  
-  #leave out route-cache stuff for now.
-  def route_cache_remove(self, broken_link):
-    pass
-  
-  def determine_broken_link(self, msg):
-    return "hello"
-  
-  def process_msg_buffer(self):
-    if len(self.msg_buffer) > 0:
-      for msg in self.msg_buffer:
-        if msg.timeinbuffer > self.time_limit:
-          self.msg_buffer.remove(msg)
-      
-      msg = self.msg_buffer[0]
-      del self.msg_buffer[0]
-      dest = msg.destination
-      if route_cache_contains(dest):
-        route = route_cache_finds(dest)
-        forward(msg, route)
-      else:
-        route_discovery(msg)
-  
-  def route_cache_contains(self, destination):
-    return True
-  
-  def route_cache_finds(self, destination):
-    return ""
-  
-  #call down to the network.send() function
-  def forward(self, msg, route):
-    pass
-  
-  #flesh this out
-  def broadcast(self, msg, type):
-    pass
-  
-  #check for a DSR identifier of some sort in the data received.
-  def is_data_packet(self, msg):
-    return True
-  
-  
-  def route_discovery(self, msg):
-    #do something regarding exponetial back off
-    #to limit how fast new route discovery is performed for 'old' messages in buffer
-    request_msg = route_request_msg(msg, msg.dest)
-    request_msg.hopcount = 0
-    request_msg.hoplimit = self.hop_limit
-    broadcast(request_msg, "Request")
-  
-  class route_request_msg(object):
-    def __init__(self, msg, dest):
-      self.msg = msg
-      self.dest = dest
-  
-  class route_reply_msg(object):
-    def __init__(self, msg, dest):
-      self.msg = msg
-      self.dest = dest
-  
-  class route_error_msg(object):
-    def __init__(self, broken_link):
-      self.broken_link = broken_link
-  
-  
-  def route_request(self, msg):
-    route_maintenance(msg.route)
-    
-    if msg.dest == "ME":
-      route_reply(msg, "Empty", False)
-    elif msg.sourceroute.has(self):
-      del msg
-    elif msg.id in self.msg_id_table:
-      del msg
-    elif msg.hop_count > msg.hop_limit:
-      del msg
-    elif route_cache_contains(msg.destination):
-      route = route_cache_finds(msg.dest)
-      route_reply(msg, route, True)
-    else:
-      msg.route_add(self.address)
-      msg.hop_count_increment()
-      broadcast(msg, "Request")
-  
-  def route_reply(self, msg, route, fromcache):
-    #Need some sort of delay to limit how fast a route reply is sent back
-    #To prevent a route reply storm
-    if got_msg_in_medium():
-      nmsg = get_msg();
-      if is_data_packet(nmsg):
-        if (nmsg.dest == msg.dest) and (nmsg.source == msg.source):
-          return
-    #Dont send route reply as the initiator have received a (possible shorter)
-    #route reply and is transmitting the intended packet
-    
-    if route.empty:
-      route = msg.sourceroute.reverse
-      reply_msg = route_reply_msg(msg,route)
-      forward(reply_msg, route)
-    else:
-      if fromcache:
-        route = route.reverse + msg.sourceroute.reverse
-      reply_msg = route_reply_msg(msg,route)
-      forward(reply_msg, route)
-  
-  def route_error(self, msg, issource):
-    if issource:
-      pass
-      broken_link = determine_broken_link(msg)
-      route_cache_remove(broken_link)
-      error_msg = route_error_msg(broken_link)
-      broadcast(error_msg, "error")
-    else:
-      pass
-      broken_link = determine_broken_link(msg)
-      route_cache_remove(broken_link)
-      broadcast(msg, "error")
-    
-    if msg.iniator_address == self.address:
-      process_msg_buffer()
-  
-  
-  def deliver_data(self, msg, route):
-    if msg.dest == self.address:
-      pass
-    #senf to application layer
-    else:
-      num_times_transmitted = 0;
-      while (num_times_transmitted < self.max_num_retransmissions):
-        forward(msg, route)
-        got_msg_in_medium()
-        nmsg = get_msg()
-        if nmsg.type == "Acknowledgemet":
-          break
-        else:
-          num_times_transmitted=+1
-      
-      if (num_times_transmitted > self.max_num_retransmissions):
-        route_error(msg, True)
-  
-  def route_maintenance(self, route):
-    pass
-    
-    
-'''
