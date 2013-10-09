@@ -183,6 +183,9 @@ class DSR:
 
   def receive_packet(self, pkt):
     self.__receive_queue.append(Packet.from_str(pkt))
+    
+  def promiscuous_receive(self, pkt):
+    pass #do cool stuff
 
   def send_message(self, contents, toID):
     self.__send_queue.append((contents, toID))
