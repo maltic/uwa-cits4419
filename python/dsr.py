@@ -31,10 +31,11 @@ class Packet:
     self.id = -1
     self.fromID = -1
     self.originatorID = -1
+    self.toID = -1
     
   def __str__(self):
-    out = [self.type, ">".join(self.path), self.contents, self.id, self.fromID, self.fromID]
-    return "{}|{}|{}|{}|{}|{}".format(*out)
+    out = [self.type, ">".join(self.path), self.contents, self.id, self.fromID, self.fromID, self.toID]
+    return "{}|{}|{}|{}|{}|{}|{}".format(*out)
     
   #works like a constructor  
   #parses a network string into a packet object
@@ -47,6 +48,7 @@ class Packet:
     pkt.id = int(toks[3])
     pkt.fromID = int(toks[4])
     pkt.originatorID = int(toks[5])
+    pkt.toID = int(toks[6])
     return pkt
     
 class RouteCache:
@@ -112,11 +114,13 @@ class DSR:
     
   def __network_broadcast(self, pkt):
     pkt.fromID = -1
+    pkt.toID = -1
     self.network.send(str(pkt), -1)
     return
 
   def __network_sendto(self, pkt, toID):
     pkt.fromID = self.ID
+    pkt.toID = toID
     self.__add_to_ack_buffer(pkt)
     self.network.send(str(pkt), toID)
     return
@@ -183,9 +187,6 @@ class DSR:
 
   def receive_packet(self, pkt):
     self.__receive_queue.append(Packet.from_str(pkt))
-    
-  def promiscuous_receive(self, pkt):
-    pass #do cool stuff
 
   def send_message(self, contents, toID):
     self.__send_queue.append((contents, toID))
@@ -232,7 +233,7 @@ class DSR:
     self.__check_ack_buffer()
     for msg in self.__receive_queue:
       #send acknowledgement message back
-      if msg.fromID != -1: #-1 fromID means broadcast
+      if msg.toID != -1: #-1 fromID means broadcast
         self.__network_sendto(self.make_packet_o(DSRMessageType.ACK, [], msg.id, msg.originatorID), msg.fromID)
       if msg.type == DSRMessageType.REQUEST:
         self.__route_request(msg)
