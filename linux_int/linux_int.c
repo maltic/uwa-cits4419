@@ -4,6 +4,19 @@
 //  - Linux Route Table Manipulation
 //  - Linux Promiscuous Socket Monitoring
 
+//Message Queues:
+// ROUTE_OPS - for reciept of route add/del requests from the routing engine
+// PROMISC_PKTS - for sending promiscuous packet info to routing engine
+// ROUTE_REQUESTS - for sending route requests to the routing engine.
+// RELEASE_PKT - for IPC between route operations and default packet thread.
+
+//Threads:
+// Main:
+//	Child: Route Operations (msg recieve on ROUTE_OPTS)
+//	Child: Default Packets (msg send on ROUTE_REQUESTS)
+//	Child: Promisc Packets (msg send on PROMISC_PKTS)
+
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <signal.h>
@@ -19,6 +32,8 @@
 #include <net/route.h>
 #include <sys/ioctl.h>
 #include <sys/msg.h>
+#include <sys/ipc.h>
+#include <pthread.h>
 
 #define TUN_DEV_IP "127.0.0.2"	/* ip address for the tun device */
 #define TUN_DEV_NAME "tun"   /* name of the tun interface */
@@ -39,6 +54,13 @@ typedef struct{
     /* 8 */ unsigned int ip_src;
     /* 9 */ unsigned int ip_dst;
 }ipheader;
+
+#define MSG_LENGTH 1024
+
+typedef struct{
+	long      mtype;    /* message type */
+	char msgdata[MSG_LENGTH]; /* message text of length MSGSZ */
+} msgbuf;
 
 
 typedef struct sockaddr_in ipaddress;
@@ -73,6 +95,51 @@ void daemon_init(void)
     umask(0);
     
     //might need some zombie prevention code here.
+}
+
+
+//Setup ROUTE_OPS queue and listen
+void *route_operations(void *threadid)
+{
+	key_t key;
+	int msgqid;
+	size_t msgSize;
+	msgbuf message;
+	
+	msgqid = msgget(ftok("/tmp/ROUTE_OPS", key), (IPC_CREAT | IPC_EXCL | 0666));
+	
+	if(msgqid < 0)
+	{
+		//msgsq was already created, just reference it.
+		msgqid = msgget(ftok("/tmp/ROUTE_OPS", key), 0666);
+		printf("route ops queue already existed");
+	}
+	else
+	{
+		printf("route ops queue created successfully");
+	}
+	
+	while(1)
+	{
+		//wait for route modification messages - of any type :. 0
+		msgSize = msgrcv(msgqid, &message, sizeof(msgbuf) - sizeof(long), 0, 0);
+		
+		//get the msg type
+		if(message.mtype == 1)
+		{
+			//route add
+			
+		}
+		
+		if(message.mtype == 2)
+		{
+			//route del
+		}
+	}
+	
+	
+	
+	
 }
 
 //From <bits/ioctls.h>
@@ -137,7 +204,7 @@ int route(char *dst_ip, char *mask_ip, char *gw_ip, char *operation)
 int main(int argc, char **argv)
 {
 	char *interface;
-	interface = "eth0"
+	interface = "eth0";
 	int option;
 	char* iwcommand;
 	struct sockaddr_in defaultRoute;
@@ -146,8 +213,24 @@ int main(int argc, char **argv)
 	char *defaultInterface;
 	defaultInterface = "tap0";
 	
+	printf("i'm actually starting");
+	
 	//spin up in the background
-    daemon_init();
+   // daemon_init();
+	
+	//setup threads
+	//pthread_t routeOpsThread, defaultThread, promiscThread;
+	int routeOpsThreadResult, defaultThreadResult, promiscThreadResult;
+	
+	routeOpsThreadResult = pthread_create(&routeOpsThread, NULL, route_operations, NULL);
+	//defaultThreadResult = pthread_create(&defaultThread, NULL, default_operations, NULL);
+	//promiscThreadResult = pthread_create(&promiscThread, NULL, promisc_operations, NULL);
+	
+	if(routeOpsThreadResult)
+	{
+		printf("THREAD ERROR: return code for route ops: %d\n", routeOpsThreadResult);
+		exit(-1);
+	}
 
 //	while(1)
 //	{
@@ -203,7 +286,7 @@ int main(int argc, char **argv)
 		//Leaves 1000 bytes for data
 		char packet[1024];
 		
-		int selectErr = select(maxfd + 1, &rfdset, &wfdset, NULL, NULL);
+		//int selectErr = select(maxfd + 1, &rfdset, &wfdset, NULL, NULL);
 		
 		if(selectErr == -1)
 		{
