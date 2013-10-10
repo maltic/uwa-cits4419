@@ -202,10 +202,10 @@ class DSR:
         return
 
   def receive_packet(self, pkt):
-	a = Packet()
+    a = Packet()
     self.__receive_queue.append(a)
-	print('Packet Received!')
-	
+    print('Packet Received!')
+
   def receive_packet_ori(self, pkt):
     pkt2 = Packet.from_str(pkt)
     if int(pkt2.toID) != self.ID and int(pkt2.toID) != -1:
