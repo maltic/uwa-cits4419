@@ -15,7 +15,7 @@ CAN_TALK = [ [0, 1, 1, 1, 1], # 0
            # 0 = False
            # 1 = True
 
-NUM_NODES = 2
+NUM_NODES = 5
 
 COMM_LOC = 'logs/'
 
