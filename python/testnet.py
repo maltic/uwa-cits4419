@@ -10,7 +10,9 @@ class TestNet:
       dsr2.receive_packet(msg)
   def runSim():
     dsr = DSR(self)
+    dsr.ID = 1
     dsr2 = DSR(self)
+    dsr2.ID = 2
     while true:
       dsr.update()
       dsr2.update()
