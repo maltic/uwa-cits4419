@@ -13,10 +13,13 @@ class TestNet:
     dsr.ID = 1
     dsr2 = DSR(self)
     dsr2.ID = 2
+    dsr.send_message("test packet", 2)
     while true:
       dsr.update()
       dsr2.update()
-      dsr.send_packet("test packet", 2)
+      msgs = dsr2.pop_messages()
+      if msgs != []:
+        print("Messages receied by dsr2 : {}".format(msgs))
       
      
     
