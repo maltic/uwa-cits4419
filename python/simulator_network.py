@@ -5,6 +5,7 @@ class SimulatorNetwork:
     self.out_p = q[0]
     self.in_p = q[1]
     self.dsr = dsr
+    self.stop = False
     self._on_recieve()
     
   def _on_recieve(self):
@@ -12,11 +13,14 @@ class SimulatorNetwork:
     inp = self.receive()
     for a, p in inp:
       self.dsr.receive_packet(p)
-      
-    print('NETWORK: Rerunning timer')
-    t = Timer(1, self._on_recieve)
-    t.start()
+     
+    if not self.stop:	 
+      print('NETWORK: Rerunning timer')
+      t = Timer(1, self._on_recieve)
+      t.start()
     
+  def stop_timer(self):
+    self.stop = True
 
   def send(self, msg, addr):
     p = (addr, msg)
