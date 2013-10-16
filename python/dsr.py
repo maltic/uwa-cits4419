@@ -35,7 +35,7 @@ class Packet:
 
   def __str__(self):
     out = [self.type, ">".join(str(x) for x in self.path), self.contents, self.id, self.fromID, self.originatorID, self.toID]
-    return " | ".join(str(x) for x in out)
+    return "|".join(str(x) for x in out)
 
   #works like a constructor
   #parses a network string into a packet object
@@ -125,42 +125,43 @@ class DSR:
     if int(pkt.type) == 4:
       self.__add_to_ack_buffer(pkt)
     self.network.send(str(pkt), toID)
-    print("Sending Packet of Type {} To {}".format(pkt.type, toID))
+    #print("Sending Packet of Type {} To {}".format(pkt.type, toID))
     return
 
   def __route_request(self, msg):
-    print("Route request for ID {} with path {}".format(msg.contents, msg.path))
+    #print("Route request for ID {} with path {}".format(msg.contents, msg.path))
     if int(msg.contents) == self.ID:
       msg.path.append(str(self.ID))
       rev_path = list(reversed(msg.path))
       self.__network_sendto(self.make_packet_o(DSRMessageType.REPLY, rev_path, msg.path[0], msg.originatorID), int(rev_path[1]))
-      print("Sending route reply to {} via path {}".format(msg.path[0], rev_path))
+      #print("Sending route reply to {} via path {}".format(msg.path[0], rev_path))
     elif self.ID in [int(value) for value in msg.path]:
-      print("Route request: I'm already in the path {}".format(msg.path))
+      #print("Route request: I'm already in the path {}".format(msg.path))
       #avoid cycles
       pass
     else:
       msg.path.append(str(self.ID))
-      print("Route request: Appending myself to path {}".format(msg.path))
+      #print("Route request: Appending myself to path {}".format(msg.path))
       self.__network_broadcast(self.make_packet_o(DSRMessageType.REQUEST, msg.path, msg.contents, msg.originatorID))
 
   def __route_reply(self, msg):
     #if i am the originator of the message then remove it from the send buffer
     #if not, then send it to the next guy on the list
-    print("Route reply for {} with path {}".format(msg.contents, msg.path))
+    #print("Route reply for {} with path {}".format(msg.contents, msg.path))
     if int(msg.contents) == self.ID:
+      #print("This reply is for me from {}".format(msg.path[0]))
       rev_path = list(reversed(msg.path))
-      intpath = [int(value) for value in rev_path]
-      next_index = intpath.index(self.ID)+1
-      print("This reply is for me from {}".format(msg.path[0]))
+      next_index = 1
       contents = self.__remove_from_send_buffer(msg.originatorID)
+      if contents == None:
+        return
       self.__network_sendto(self.make_packet(DSRMessageType.SEND, rev_path, contents), int(rev_path[next_index]))
-      print("Sending message {} to {} via path {}".format(contents, rev_path[next_index], rev_path))
+      #print("Sending message {} to {} via path {}".format(contents, rev_path[next_index], rev_path))
     else:
-      intpath = [int(value) for value in rev_path]
+      intpath = [int(value) for value in msg.path]
       next_index = intpath.index(self.ID)+1
       self.__network_sendto(self.make_packet_o(DSRMessageType.REPLY, msg.path, msg.contents, msg.originatorID), int(msg.path[next_index]))
-      print("This is not my route reply. Forwarding to {}".format(msg.path[next_index]))
+      #print("This is not my route reply. Forwarding to {}".format(msg.path[next_index]))
     #need to start route discovery if a link is broken
     #i havn't added this yet because I am not sure how the network layer will let us know
 
@@ -194,15 +195,17 @@ class DSR:
 
   def __msg_acknowledgement(self, msg):
     for ack in self.__awaiting_acknowledgement_buffer:
-      print("Acknowledging {} vs {}".format(ack[0].id, msg.originatorID))
+      #print("Acknowledging {} vs {}".format(ack[0].id, msg.originatorID))
       if int(ack[0].id) == int(msg.originatorID):
         self.__awaiting_acknowledgement_buffer.remove(ack)
         return
 
   def receive_packet(self, pkt):
     a = Packet.from_str(pkt)
+    if int(a.toID) != self.ID and int(a.toID) != -1:
+        return #do promiscuous stuff
     self.__receive_queue.append(a)
-    print('{} Packet Received! {}'.format(self.ID, pkt))
+    #print('{} Packet Received! {}'.format(self.ID, pkt))
 
   def receive_packet_ori(self, pkt):
     pkt2 = Packet.from_str(pkt)
@@ -224,6 +227,7 @@ class DSR:
         msg = send[0]
         self.__send_buffer.remove(send)
         return msg
+    return None
 
   def __check_ack_buffer(self):
     for ack in self.__awaiting_acknowledgement_buffer:
@@ -252,15 +256,18 @@ class DSR:
         return
     start = time.time()
     self.__awaiting_acknowledgement_buffer.append((pkt,start,1))
-    print("Add pkt with originator ID {} to ack".format(pkt.originatorID))
+    #print("Add pkt with originator ID {} to ack".format(pkt.originatorID))
 
 
   def update(self):
     self.__check_ack_buffer()
     for msg in self.__receive_queue:
+      #avoid self self messages
+      if msg.fromID == self.ID:
+        continue
       #send acknowledgement message back
       if msg.toID != -1 and msg.type == DSRMessageType.SEND: #-1 fromID means broadcast
-        print("Sending acknowledgement for orginator ID {}".format(msg.originatorID))
+        #print("Sending acknowledgement for orginator ID {}".format(msg.originatorID))
         self.__network_sendto(self.make_packet_o(DSRMessageType.ACK, [], msg.id, msg.originatorID), int(msg.fromID))
       if msg.type == DSRMessageType.REQUEST:
         self.__route_request(msg)
