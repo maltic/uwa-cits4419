@@ -5,22 +5,22 @@ import time
 import sys
 import string
 
-              # x  0  1  2  3  4         y
+               # x  0  1  2  3  4        y
 CAN_TALK = [(0,  [ [0, 1, 1, 1, 1],    # 0
                    [1, 0, 1, 1, 1],    # 1
                    [1, 1, 0, 1, 1],    # 2
                    [1, 1, 1, 0, 1],    # 3
                    [1, 1, 1, 1, 0] ]), # 4
                    
-            (3,  [ [0, 1, 1, 1, 1],
-                   [1, 0, 1, 1, 1],
-                   [1, 1, 0, 1, 1],
-                   [1, 1, 1, 0, 1],
-                   [1, 1, 1, 1, 0] ]),
+            (3,  [ [1, 1, 1, 1, 1],
+                   [1, 1, 1, 1, 1],
+                   [1, 1, 1, 1, 1],
+                   [1, 1, 1, 1, 1],
+                   [1, 1, 1, 1, 1] ]),
                    
-            (6,  [ [0, 1, 1, 1, 1],
-                   [1, 0, 1, 1, 1],
-                   [1, 1, 0, 1, 1],
+            (6,  [ [0, 0, 0, 0, 0],
+                   [0, 0, 0, 0, 0],
+                   [0, 1, 0, 1, 1],
                    [1, 1, 1, 0, 1],
                    [1, 1, 1, 1, 0] ]),
                    
@@ -64,10 +64,10 @@ def _node_simulation(q, log_to, node_addr, other_nodes):
 
 class Simulator:
   def __init__(self, num_nodes, talk_matrix):
-    assert(len(talk_matrix) == num_nodes)
+    #assert(len(talk_matrix) == num_nodes)
 
     self.num_nodes = num_nodes
-    self.talk_matrix = [ [bool(x) for x in y] for y in talk_matrix ]
+    #self.talk_matrix = [ [bool(x) for x in y] for y in talk_matrix ]
     self.processes = [None] * num_nodes
     self.out_pipes = [None] * num_nodes
     self.in_pipes = [None] * num_nodes
@@ -82,15 +82,15 @@ class Simulator:
       self.in_pipes[i] = in_p
 
   def can_talk(self, a, b):
-    time_diff = time.time() - self.start_time
-    prev_m = CAN_TALK[0]
+    time_diff = int(time.time() - self.start_time)
+    prev_m = CAN_TALK[0][1]
     for t, m in CAN_TALK:
-       if t > time_now:
+       if time_diff > t:
           prev_m = m
-       if t < time_now:
+       if time_diff < t:
           break
  
-    return prev_m[a][b]
+    return prev_m[a][b] == 1
 
   def start(self):
     [p.start() for p in self.processes]
