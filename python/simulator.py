@@ -105,7 +105,7 @@ class Simulator:
     [p.start() for p in self.processes]
     self.start_time = time.time()
 
-    while any([p.is_alive() for p in self.processes]):
+    while any(p.is_alive() for p in self.processes):
       for i, pipe in enumerate(self.in_pipes):
         while pipe.poll():
           toaddr, msg = pipe.recv()
