@@ -7,9 +7,9 @@ import socketserver
 
 input_buffer = []
 HOST = "localhost"
-UDP_PORT = 6969
+DSR_PORT = 70000
 RECV_BUFFER = 1024
-#layerAbove
+layerAbove = None
 
 #Subclass the base handler and add our functionality.
 class ReceiveHandler(socketserver.BaseRequestHandler):
@@ -19,12 +19,6 @@ class ReceiveHandler(socketserver.BaseRequestHandler):
     data = self.request[0].strip()
 
     layerAbove.receive_packet(data)
-    #clientsock = self.request[1]
-    
-    #input_buffer.append(data)
-    
-    #print("Received data from {}".format(self.client_address[0]))
-    #print(data)
   
   #end def
 
@@ -62,7 +56,7 @@ def receive():
 def init(dsr_ref):
   layerAbove = dsr_ref
   
-  server = ServerThreaded((HOST, UDP_PORT), ReceiveHandler)
+  server = ServerThreaded((HOST, DSR_PORT), ReceiveHandler)
   ip, port  = server.server_address
   server_thread = threading.Thread(target=server.serve_forever)
   server_thread.start()
