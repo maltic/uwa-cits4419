@@ -78,8 +78,8 @@ class RouteCache:
 
 
 class DSR:
-  def __init__(self, q, node_addr):
-    self.network = simulator_network.SimulatorNetwork(q, self)
+  def __init__(self, net, node_addr):
+    self.network = net #simulator_network.SimulatorNetwork(q, self)
     self.next_packet_id = 0
     self.__receive_queue = []
     self.__send_queue = []
@@ -125,7 +125,7 @@ class DSR:
     if int(pkt.type) == 4:
       self.__add_to_ack_buffer(pkt)
     self.network.send(str(pkt), toID)
-    print("Sending Packet of Type {} To {}".format(pkt.tpye, toID))
+    print("Sending Packet of Type {} To {}".format(pkt.type, toID))
     return
 
   def __route_request(self, msg):
@@ -187,7 +187,6 @@ class DSR:
 
   def __route_discover(self, msg, toID):
     #lookup route cache not implemented
-
     #start route discovery
     temp = self.make_packet(DSRMessageType.REQUEST, [self.ID], toID)
     self.__send_buffer.append((msg, temp.originatorID))
@@ -197,15 +196,14 @@ class DSR:
     for ack in self.__awaiting_acknowledgement_buffer:
       print("Acknowledging {} vs {}".format(ack[0].id, msg.originatorID))
       if int(ack[0].id) == int(msg.originatorID):
-
         self.__awaiting_acknowledgement_buffer.remove(ack)
         return
 
   def receive_packet(self, pkt):
-	a = Packet()
+    a = Packet.from_str(pkt)
     self.__receive_queue.append(a)
-	print('Packet Received!')
-	
+    print('{} Packet Received! {}'.format(self.ID, pkt))
+
   def receive_packet_ori(self, pkt):
     pkt2 = Packet.from_str(pkt)
     if int(pkt2.toID) != self.ID and int(pkt2.toID) != -1:
