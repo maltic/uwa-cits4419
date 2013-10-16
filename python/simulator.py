@@ -67,7 +67,7 @@ class Simulator:
     #assert(len(talk_matrix) == num_nodes)
 
     self.num_nodes = num_nodes
-    #self.talk_matrix = [ [bool(x) for x in y] for y in talk_matrix ]
+    self.talk_matrix = talk_matrix
     self.processes = [None] * num_nodes
     self.out_pipes = [None] * num_nodes
     self.in_pipes = [None] * num_nodes
@@ -83,8 +83,8 @@ class Simulator:
 
   def can_talk(self, a, b):
     time_diff = int(time.time() - self.start_time)
-    prev_m = CAN_TALK[0][1]
-    for t, m in CAN_TALK:
+    prev_m = self.talk_matrix[0][1]
+    for t, m in self.talk_matrix:
        if time_diff > t:
           prev_m = m
        if time_diff < t:
