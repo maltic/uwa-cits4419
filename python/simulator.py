@@ -5,13 +5,32 @@ import time
 import sys
 import string
 
-         # x  0  1  2  3  4     y
-CAN_TALK = [ [0, 1, 1, 1, 1], # 0
-             [1, 0, 1, 1, 1], # 1
-             [1, 1, 0, 1, 1], # 2
-             [1, 1, 1, 0, 1], # 3
-             [1, 1, 1, 1, 0] ]# 4
-
+              # x  0  1  2  3  4         y
+CAN_TALK = [(0,  [ [0, 1, 1, 1, 1],    # 0
+                   [1, 0, 1, 1, 1],    # 1
+                   [1, 1, 0, 1, 1],    # 2
+                   [1, 1, 1, 0, 1],    # 3
+                   [1, 1, 1, 1, 0] ]), # 4
+                   
+            (3,  [ [0, 1, 1, 1, 1],
+                   [1, 0, 1, 1, 1],
+                   [1, 1, 0, 1, 1],
+                   [1, 1, 1, 0, 1],
+                   [1, 1, 1, 1, 0] ]),
+                   
+            (6,  [ [0, 1, 1, 1, 1],
+                   [1, 0, 1, 1, 1],
+                   [1, 1, 0, 1, 1],
+                   [1, 1, 1, 0, 1],
+                   [1, 1, 1, 1, 0] ]),
+                   
+            (9,  [ [0, 1, 1, 1, 1],
+                   [1, 0, 1, 1, 1],
+                   [1, 1, 0, 1, 1],
+                   [1, 1, 1, 0, 1],
+                   [1, 1, 1, 1, 0] ])]
+                   
+                   
            # 0 = False
            # 1 = True
 
@@ -52,6 +71,7 @@ class Simulator:
     self.processes = [None] * num_nodes
     self.out_pipes = [None] * num_nodes
     self.in_pipes = [None] * num_nodes
+    self.start_time = 0
 
     for i in range(num_nodes):
       out_p, in_c = Pipe()
@@ -62,10 +82,19 @@ class Simulator:
       self.in_pipes[i] = in_p
 
   def can_talk(self, a, b):
-    return self.talk_matrix[a][b]
+    time_diff = time.time() - self.start_time
+    prev_m = CAN_TALK[0]
+    for t, m in CAN_TALK:
+       if t > time_now:
+          prev_m = m
+       if t < time_now:
+          break
+ 
+    return prev_m[a][b]
 
   def start(self):
     [p.start() for p in self.processes]
+    self.start_time = time.time()
 
     while True:
       for i, pipe in enumerate(self.in_pipes):
