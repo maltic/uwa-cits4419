@@ -36,6 +36,9 @@ class Packet:
   def __str__(self):
     out = [self.type, ">".join(str(x) for x in self.path), self.contents, self.id, self.fromID, self.originatorID, self.toID]
     return "|".join(str(x) for x in out)
+  
+  def __repr__(self):
+    return self.__str__()
 
   #works like a constructor
   #parses a network string into a packet object
@@ -79,7 +82,7 @@ class RouteCache:
 
 class DSR:
   def __init__(self, net, node_addr):
-    self.network = net #simulator_network.SimulatorNetwork(q, self)
+    self.network = simulator_network.SimulatorNetwork(net, self)
     self.next_packet_id = 0
     self.__receive_queue = []
     self.__send_queue = []
