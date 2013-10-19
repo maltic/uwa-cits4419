@@ -21,6 +21,7 @@ class DSRMessageType:
 
 MAX_transmissions = 6
 MAX_time_between_ack = 10
+MAX_time_between_request = 2
 
 class Packet:
   def __init__(self):
@@ -36,7 +37,7 @@ class Packet:
   def __str__(self):
     out = [self.type, ">".join(str(x) for x in self.path), self.contents, self.id, self.fromID, self.originatorID, self.toID]
     return "|".join(str(x) for x in out)
-  
+
   def __repr__(self):
     return self.__str__()
 
@@ -122,7 +123,6 @@ class DSR:
     return
 
   def __network_sendto(self, pkt, toID):
-
     pkt.fromID = self.ID
     pkt.toID = toID
     if int(pkt.type) == 4:
@@ -158,7 +158,15 @@ class DSR:
       contents = self.__remove_from_send_buffer(msg.originatorID)
       if contents == None:
         return
-      self.__network_sendto(self.make_packet(DSRMessageType.SEND, rev_path, contents), int(rev_path[next_index]))
+      if isinstance(contents, Packet):
+        intpath = [int(value) for value in contents.path]
+        index = intpath.index(self.ID)
+        newpath = intpath[:index]
+        newpath.append(rev_path)
+        contents.path = newpath
+        self.__network_sendto(contents, int(rev_path[next_index]))
+      else:
+        self.__network_sendto(self.make_packet(DSRMessageType.SEND, rev_path, contents), int(rev_path[next_index]))
       #print("Sending message {} to {} via path {}".format(contents, rev_path[next_index], rev_path))
     else:
       intpath = [int(value) for value in msg.path]
@@ -193,7 +201,9 @@ class DSR:
     #lookup route cache not implemented
     #start route discovery
     temp = self.make_packet(DSRMessageType.REQUEST, [self.ID], toID)
-    self.__send_buffer.append((msg, temp.originatorID))
+    start = time.time()
+    counter = 1
+    self.__send_buffer.append((msg, temp.originatorID, start, counter))
     self.__network_broadcast(temp)
 
   def __msg_acknowledgement(self, msg):
@@ -239,10 +249,11 @@ class DSR:
         next_index = intpath.index(self.ID)+1
         unreachable_node = ack[0].path[next_index]
         self.__network_broadcast(self.make_packet(DSRMessageType.ERR0R, [self.ID],  unreachable_node))
+        self.__route_discover(ack[0], int(unreachable_node))
         self.__awaiting_acknowledgement_buffer.remove(ack)
       else:
         end = time.time()
-        elapsed = end - ack[1]
+        elapsed = end - int(ack[1])
         if elapsed > MAX_time_between_ack:
           msg = ack[0]
           intpath = [int(value) for value in ack[0].path]
@@ -261,9 +272,21 @@ class DSR:
     self.__awaiting_acknowledgement_buffer.append((pkt,start,1))
     #print("Add pkt with originator ID {} to ack".format(pkt.originatorID))
 
+  def __check_send_buffer(self):
+    for send in self.__send_buffer:
+      end = time.time()
+      elapsed = end - int(send[2])
+      if elapsed > MAX_time_between_request*send[3]:
+        start = time.time()
+        counter = int(send[3])+1
+        msg = send[0]
+        originatorID = send[1]
+        self.__send_buffer.remove(send)
+        self.__send_buffer.append((msg, originatorID, start, counter))
 
   def update(self):
     self.__check_ack_buffer()
+    self.__check_send_buffer()
     for msg in self.__receive_queue:
       #avoid self self messages
       if msg.fromID == self.ID:
