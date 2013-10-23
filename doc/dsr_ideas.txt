@@ -1,0 +1,92 @@
+IDEAS!!!!!!
+General idea:
+- node learns the route path through route discovery, route request, route reply, sending packet and by overhearing data.
+
+Route maintenance - packet salvaging, route shortening, error propagation, caching negative information
+============================================
+Performance measurement
+============================================
+Evaluate performance of DSR based on Quality of Service (measurement used in most paper)
+- Collision: occurring when more than one nodes trying to acquire the channel/resources at the same time
+
+- Throughput (bits per second): (Rate of sending and receiving data packets)/simulation time
+
+- Latency Rate: time to deliver the packet from source to destination.
+
+- Packet Loss/Drop: Error condition which packet never arrive to the destination, possibly due to corrupted packets/broken link/insufficient bandwidth.
+
+
+============================================
+Route reply storm
+============================================
+Delay before sending reply (Ahmad, Awan, Waqqas, Ahmad 2008) & (Broch, Johnson, Maltz 2007)
+- Delay time = H x ( h - 1 + r )
+	*H: constant delay per hop
+	*h: total number of hops to reach destination
+	*r: random number
+- tradeoff between delay and collisions
+	*less packet drops + slightly better throughput
+	*more delay time.
+
+
+============================================
+Shortest path
+============================================
+Ant algorithm (Istikmal 2013)
+- finding the shortest path using ant colony optimisation approach. 
+- tradeoff between good performance and overhead:
+	*good performance: 48% smaller delay, 1.37 times smaller hop count, up to 3.6 times throughput
+	*but 58% larger overhead.
+
+ordered walk with learning (OWL) (Dabideen, Garcia-Luna-Aceves 2009)
+- DFS based routing + ordered walk search algorithm.
+
+BFS
+- very popular choice; fastest approach to finding the desired routes [average time of O(log_k N)].
+- but signaling overhead of O(N) incurred (Generally not good for large network due to long queue delays or packet losses)
+	
+============================================
+Route cache and Route discovery
+============================================
+Optimising the efficiency of route discovery (Seet, Lee, Lau 2003)
+- if a node overhears a RREP for an unseen RREQ, node record: 
+	1) hop-length of return source route; 
+	2) RREQ ID
+	3) RREQ source address
+- node compare hop-length, reply if it has a shorter route; discard otherwise
+
+Route request hop limit
+- Whenever request is forwarded, limit is decremented. if the limit reaches 0 before finding the target, discard the request packet.
+Can be use for Propagating route request if target through:
+	- If target is not found within the source's neighbourhood within a short timeout, source sends a propagating RREQ using the DiscoveryHopLimit
+	- Expanding ring search. Hop limit starts with 1, continues to increment this limit
+
+	
+============================================
+Route error propagation
+============================================
+
+
+
+
+============================================
+Possible future work
+============================================
+- Use Global Positioning System (GPS) to determine the location of node (Basagni,Chlamtax, Syrotiuk 1999);
+
+============================================
+Sources: 
+============================================
+S. Ahmad, I. Awan, A. Waqqas, B. Ahmad 2008. Performance Analysis of DSR & Extended DSR Protocols.
+
+M. Aissani, M. R. Senouci, W. Demigna, A. Mellouk 2007. Optimizations and Performance Study of the Dynamic Source Routing Protocol.
+
+J. Broch, D. B. Johnson, D. A. Maltz 2007. The Dynamic Source Routing Protocol (DSR) for Mobile Ad Hoc Networks for IPv4.
+
+S. Basagni, I. Chlamtax, V. R. Syrotiuk 1999. Dynamic Source Routing for Ad Hoc Networks Using the Global Positioning System.
+
+S. Dabideen, J.J. Garcia-Luna-Aceves 2009. OWL: Towards scalable routing in MANETs using depth-first search on demand.
+
+Istikmal 2013. Analysis and Evaluation Optimization Dynamic Source Routing (DSR) Protocol in Mobile Adhoc Network Based on Ant Algorithm.
+
+B. Seet, B. Lee, C. Lau 2003. Optimisation of route discovery for dynamic source routing in mobile ad hoc networks
