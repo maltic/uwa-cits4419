@@ -76,9 +76,9 @@ class DSRMessageType:
   ACK = 5
 
 
-MAX_transmissions = 6
-MAX_time_between_ack = 10
-MAX_time_between_request = 2
+MAX_transmissions = 2
+MAX_time_between_ack = 1
+MAX_time_between_request = 1
 
 class Packet:
   def __init__(self):
@@ -182,7 +182,7 @@ class DSR:
   def __network_sendto(self, pkt, toID):
     pkt.fromID = self.ID
     pkt.toID = toID
-    if int(pkt.type) == 4:
+    if pkt.type != DSRMessageType.ACK:
       self.__add_to_ack_buffer(pkt)
     self.network.send(str(pkt), toID)
     #print("Sending Packet of Type {} To {}".format(pkt.type, toID))
@@ -234,9 +234,11 @@ class DSR:
     #i havn't added this yet because I am not sure how the network layer will let us know
 
   def __route_error(self, msg):
+      global DSRMessageType
       #self.__remove_from_cache(msg.contents)
+      print("I should be printing an error message")
       msg.path.append(str(self.ID))
-      self._network_broadcast(self.make_packet(DSRMessageType.ERR0R, msg.path, msg.contents))
+      self.__network_broadcast(self.make_packet(3, msg.path, msg.contents))
     #not implemented yet, because there is not route cache
 
   def __route_send(self, msg):
@@ -300,22 +302,27 @@ class DSR:
     return None
 
   def __check_ack_buffer(self):
+    print("Checking ack buffer")
+    print(self.__awaiting_acknowledgement_buffer)
     for ack in self.__awaiting_acknowledgement_buffer:
       if ack[2] > MAX_transmissions:
         intpath = [int(value) for value in ack[0].path]
         next_index = intpath.index(self.ID)+1
         unreachable_node = ack[0].path[next_index]
-        self.__network_broadcast(self.make_packet(DSRMessageType.ERR0R, [self.ID],  unreachable_node))
+        self.__network_broadcast(self.make_packet(DSRMessageType.ERROR, [self.ID],  unreachable_node))
         self.__route_discover(ack[0], int(unreachable_node))
         self.__awaiting_acknowledgement_buffer.remove(ack)
       else:
         end = time.time()
         elapsed = end - int(ack[1])
+        print(ack)
+        print("Elapsed {}".format(elapsed))
         if elapsed > MAX_time_between_ack:
           msg = ack[0]
           intpath = [int(value) for value in ack[0].path]
           next_index = intpath.index(self.ID)+1
           self.__network_sendto(msg, int(msg.path[next_index]))
+          print("Retransmitting")
 
   def __add_to_ack_buffer(self, pkt):
     for ack in self.__awaiting_acknowledgement_buffer:
@@ -327,6 +334,7 @@ class DSR:
         return
     start = time.time()
     self.__awaiting_acknowledgement_buffer.append((pkt,start,1))
+    print("Adding to ack")
     #print("Add pkt with originator ID {} to ack".format(pkt.originatorID))
 
   def __check_send_buffer(self):
