@@ -67,26 +67,26 @@ CAN_TALK = [(0,  [ [0, 1, 1, 1, 1],    # 0
                    [1, 1, 0, 1, 1],    # 2
                    [1, 1, 1, 0, 1],    # 3
                    [1, 1, 1, 1, 0] ]), # 4
-                   
-            (3,  [ [1, 1, 1, 1, 1],
-                   [1, 1, 1, 1, 1],
-                   [1, 1, 1, 1, 1],
-                   [1, 1, 1, 1, 1],
-                   [1, 1, 1, 1, 1] ]),
-                   
-            (6,  [ [0, 0, 0, 0, 0],
-                   [0, 0, 0, 0, 0],
-                   [0, 1, 0, 1, 1],
+
+            (3,  [ [0, 1, 1, 1, 1],
+                   [1, 0, 1, 1, 1],
+                   [1, 1, 0, 1, 1],
                    [1, 1, 1, 0, 1],
                    [1, 1, 1, 1, 0] ]),
-                   
+
+            (6,  [ [0, 0, 0, 0, 0],
+                   [0, 0, 0, 0, 0],
+                   [0, 0, 0, 0, 0],
+                   [0, 0, 0, 0, 0],
+                   [0, 0, 0, 0, 0] ]),
+
             (9,  [ [0, 1, 1, 1, 1],
                    [1, 0, 1, 1, 1],
                    [1, 1, 0, 1, 1],
                    [1, 1, 1, 0, 1],
                    [1, 1, 1, 1, 0] ])]
-                   
-                   
+
+
            # 0 = False
            # 1 = True
 
@@ -97,6 +97,7 @@ COMM_LOC = 'logs/'
 
 def _node_simulation(q, log_to, node_addr, other_nodes, loops):
   sys.stdout = open(log_to, 'a')
+  sys.stderr = open(log_to+".err", 'a')
   print('SIMULATOR: Node {} online'.format(node_addr))
 
   d = dsr.DSR(q, node_addr)
@@ -152,12 +153,12 @@ class Simulator:
           prev_m = m
        if time_diff < t:
           break
- 
+
     return prev_m[a][b] == 1
 
   def start(self):
     print('Running simulation; will terminate automatically and gracefully after {} loops.'.format(self.loops))
-	
+
     [p.start() for p in self.processes]
     self.start_time = time.time()
 
@@ -168,7 +169,7 @@ class Simulator:
           for j, opipe in enumerate(self.out_pipes):
             if self.can_talk(i, j):
               opipe.send((i, msg))
-			  
+
     print('Completed. Consult logs at "{}" for more info'.format(self.comm_loc))
 
 if __name__ == '__main__':

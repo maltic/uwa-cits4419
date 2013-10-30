@@ -219,7 +219,7 @@ class DSR:
         intpath = [int(value) for value in contents.path]
         index = intpath.index(self.ID)
         newpath = intpath[:index]
-        newpath.append(rev_path)
+        newpath.extend(rev_path)
         contents.path = newpath
         self.__network_sendto(contents, int(rev_path[next_index]))
       else:
@@ -237,8 +237,8 @@ class DSR:
       global DSRMessageType
       #self.__remove_from_cache(msg.contents)
       print("I should be printing an error message")
-      msg.path.append(str(self.ID))
-      self.__network_broadcast(self.make_packet(3, msg.path, msg.contents))
+      print(msg)
+      self.__network_broadcast(self.make_packet(DSRMessageType.ERROR, msg.path, msg.contents))
     #not implemented yet, because there is not route cache
 
   def __route_send(self, msg):
