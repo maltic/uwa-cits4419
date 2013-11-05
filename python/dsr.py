@@ -67,6 +67,7 @@
 import simulator_network
 import time
 import ast
+import route_cache
 
 class DSRMessageType:
   REQUEST = 1
@@ -111,31 +112,6 @@ class Packet:
     pkt.originatorID = int(toks[5])
     pkt.toID = int(toks[6])
     return pkt
-
-class RouteCache:
-  def __init__(self, myID):
-    self.__edge_list = [[]]
-    self.__me = myID
-
-  def offer_route(self, route):
-    #attach the route information into the cache
-    #should also add the reverse route
-    return
-
-  def remove_link(self, link):
-    #removes a given link from the cache
-    return
-
-  def get_path(self, toID):
-    #first expires any old routes, then...
-    ##update_cache()
-    #gets a route to the id specified
-    pathsToId = [link for link in self.__edge_list if link[-1]==myID]
-    minPath = pathsToId[0]
-    for i in pathsToId:
-        if len(minPath) > len(i):
-            minPath = i
-    return minPath
 
 
 class DSR:
