@@ -68,7 +68,7 @@ import simulator_network
 import time
 import ast
 import route_cache
-import dsr_packet
+from dsr_packet import DSRMessageType, Packet
 
 MAX_transmissions = 2
 MAX_time_between_ack = 1
@@ -89,7 +89,7 @@ class DSR:
     self.__done_buffer = []
     self.__awaiting_acknowledgement_buffer = []
     self.ID = node_addr
-    self.__route_cache = RouteCache(self.ID)
+    self.__route_cache = route_cache.RouteCache(self.ID)
     self.__seen = {} # set of (id, fromID) tuples representing which pakcets have been seen already
 
   #works like a constructor
