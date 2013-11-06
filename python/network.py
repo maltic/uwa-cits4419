@@ -111,9 +111,59 @@ def receive():
 
 def init(dsr_ref):
   layerAbove = dsr_ref
-  
   server = ServerThreaded((HOST, DSR_PORT), ReceiveHandler)
   ip, port  = server.server_address
   server_thread = threading.Thread(target=server.serve_forever)
   server_thread.start()
+
+from scapy import *
+
+class Network:
+  def __init__(self, dsr):
+    self.toOSPipe =
+    self.fromtOSPipe =
+    self.dsr = dsr
+    self._onReceive()
+
+  def _onReceive(self):
+    print('NETWORK: triggered _onRecieve()')
+    inPackets = self.receive()
+    for a, p in inPackets:
+      self.dsr.receive_packet(p)
+
+  def send(self, msg, addr):
+    payload = (addr, msg)
+
+    print('NETWORK: sending payload {}'.format(p))
+    packet = self.makePacket(addr, msg)
+
+def makePacket(self, addr, msg)
+    p = IP(proto=69, dst="255.255.255.255")/UDP(srcp=1069)/msg
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
