@@ -54,40 +54,44 @@
 #
 #===============================================================================
 
-import dsr
+#DSR Message Type
+class DSRMessageType:
+  REQUEST = 1
+  REPLY = 2
+  ERROR = 3
+  SEND = 4
+  ACK = 5
 
-class TestNet:
+#DSR Packet
+class Packet:
   def __init__(self):
-    self.dsr1 = dsr.DSR(1)
-    self.dsr2 = dsr.DSR(2)
-    self.dsr3 = dsr.DSR(3)
-  def send(self, msg, addr):
-    self.dsr1.receive_packet(msg)
-    self.dsr2.receive_packet(msg)
-    self.dsr3.receive_packet(msg)
-  def runSim(self):
-    self.dsr1.send_message("test packet weeeeeeeee", 2)
-    while True:
-      tmp = self.dsr1.pop_outbox()
-      tmp.extend(self.dsr2.pop_outbox())
-      tmp.extend(self.dsr3.pop_outbox())
-      for p in tmp:
-        self.send(p[0],p[1])
-      self.dsr1.update()
-      self.dsr2.update()
-      self.dsr3.update()
-      msgs = self.dsr1.pop_inbox()
-      msgs.extend(self.dsr2.pop_inbox())
-      msgs.extend(self.dsr3.pop_inbox())
-      if msgs != []:
-        print("Messages receied by dsr2 : {} path was {}".format(msgs[0].contents, msgs[0].path))
-        return
+    #work out what these are by parsing packet
+    self.type = 0
+    self.path = []
+    self.contents = ""
+    self.id = -1
+    self.fromID = -1
+    self.originatorID = -1
+    self.toID = -1
 
-if __name__ == '__main__':
-  tn = TestNet()
-  tn.runSim()
+  #prints out information of this packet
+  def __str__(self):
+    out = [self.type, ">".join(str(x) for x in self.path), self.contents, self.id, self.fromID, self.originatorID, self.toID]
+    return "|".join(str(x) for x in out)
 
+  def __repr__(self):
+    return self.__str__()
 
-
-
-
+  #works like a constructor
+  #parses a network string into a packet object
+  def from_str(packetStr):
+    pkt = Packet()
+    toks = packetStr.split("|")
+    pkt.type = int(toks[0])
+    pkt.path = toks[1].split(">")
+    pkt.contents = toks[2]
+    pkt.id = int(toks[3])
+    pkt.fromID = int(toks[4])
+    pkt.originatorID = int(toks[5])
+    pkt.toID = int(toks[6])
+    return pkt
