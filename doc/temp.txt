@@ -1,0 +1,90 @@
+(A) Mobile Ad Hoc General Concept
+
+
+1. short path - make the shortest neighbour as the prefered path
+2. broken link - still prefer short neighbour, but send through the next short neighbour
+continuing infinity - sending through next path ...algorithm is...using short path +1 on so on
+then updates routing table
+until the cost of link n2-n1 is less than cost of n2-n3
+3. 
+responding to topology changes
+then any route through that hop is given infinity distance (considered as major changes
+and immediately broadcasted)
+4.
+routing table updated and in the future, no longer using broken path (using new information)
+5.
+routing table information-list all available destination and the number of hops to each destination
+shortest path is listed here (hop-count=distance between two nodes)
+
+
+
+
+(B) DSR Specific Attributes
+
+Sample Nodes: A->B->C->D->E
+
+Route Discovery
+1. Automatic route discovery
+- DSR successfully routing automatically and is determined by the protocol
+- DSR successfully send message
+
+2. 
+
+3. Route discovery frequency
+
+Route Request
+1.
+2.
+3.
+4. Hop limit
+5. Restricted Propagation of Route Request
+
+
+Route Cache
+1. Maintaining route cache information
+- Each node successfully maintains a route cache and remember the routes that it has learnt about
+
+2. Route cache updates
+3. Route cache has no available information
+4. Caching overhead routing information
+
+Route Reply
+1. Complete route discovery
+- A trying to find route to E. Each intermediate node appends its ID at the end.
+E knows the reverse route and successfully sends a route reply.
+
+2. Partial route discovery
+- A is trying to find a route to E. C has a route to E in its route cache.
+C successfully sends back the complete route to A.
+
+3. Waiting before reply
+4. Route reply storm
+
+
+Route Maintenance
+1. Alternative route for broken route
+- A successfully using alternative route
+
+2. New route discovery for broken route
+- A
+
+3. Active acknowledgement
+4. Route Error Message
+5.
+
+Packet
+1. Size
+- The number of control messages is much smaller
+
+2. Energy-efficient
+- DSR is successfully showing more energy-efficient attribute and does not congest the network with too many control messages
+
+
+
+
+18.
+route maintenance
+When S is using a discovered
+route to D, S may detect that the route is broken. In
+such cases, S may use an alternate route to D (if it is
+known), or start another route discovery phase to D.
