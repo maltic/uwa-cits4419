@@ -84,6 +84,7 @@ class DSR:
     self.__send_queue = []
     self.__send_buffer = []
     self.__done_buffer = []
+    self.__outbox = [] #packets ready to be sent on the network
     self.__awaiting_acknowledgement_buffer = []
     self.ID = node_addr
     self.__route_cache = route_cache.RouteCache(self.ID)
@@ -118,7 +119,7 @@ class DSR:
   def __network_broadcast(self, pkt):
     pkt.fromID = -1
     pkt.toID = -1
-    self.network.send(str(pkt), -1)
+    self.__outbox.append((str(pkt), -1))
     return
 
   #Send a packet to a given destination
@@ -127,7 +128,7 @@ class DSR:
     pkt.toID = toID
     if pkt.type != DSRMessageType.ACK:
       self.__add_to_ack_buffer(pkt)
-    self.network.send(str(pkt), toID)
+    self.__outbox.append((str(pkt), toID))
     #print("Sending Packet of Type {} To {}".format(pkt.type, toID))
     return
 
@@ -253,10 +254,17 @@ class DSR:
         return #do promiscuous stuff
     self.__receive_queue.append(a)
     #print('{} Packet Received! {}'.format(self.ID, pkt))
-
-  def pop_messages(self):
+  
+  #pops all the messages this dsr node has received
+  #and which were destined for it
+  def pop_inbox(self):
     tmp = self.__done_buffer
     self.__done_buffer = []
+    return tmp
+  
+  def pop_outbox(self):
+    tmp = self.__outbox
+    self.__outbox = []
     return tmp
 
   def __remove_from_send_buffer(self, ID):
