@@ -19,6 +19,7 @@
 #
 #===============================================================================
 
+#?????????????????????????????????WHICH LICENSE?????????????????????????????????
 #=================================BSD LICENSE===================================
 #
 #Copyright (c) <YEAR>, <AUTHOR>
@@ -53,17 +54,13 @@
 #SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 #===============================================================================
+#?????????????????????????????????WHICH LICENSE?????????????????????????????????
+
+#===========================PUBLIC INTERFACE====================================
+#TODO
+#===============================================================================
 
 
-#Need to consider exponential back off limit for initiating new route discoveries
-#Keep broken routes in cache for certain time? So that broken link request wont be forwarded
-#How long to keep cached routes for?
-#Shortening of routes by gratious reply?
-#Piggyback route error msgs on a node's new route request.
-
-
-#import network
-#import simulator_network as network
 import simulator_network
 import time
 import ast
@@ -76,10 +73,10 @@ MAX_time_between_request = 1
 
 #DSR Routing Algorithm
 class DSR:
-  #===========================================================
-  #INITIALISATION
+  #-----------------------------------------------------------
+  #                    INITIALISATIONS
+  #-----------------------------------------------------------
   #Initisalise itself with 5 queues - receive Q, send Q, send buffer, done buffer, and ack buffer.
-  #===========================================================
   def __init__(self, net, node_addr):
     self.network = simulator_network.SimulatorNetwork(net, self)
     self.next_packet_id = 0
@@ -92,9 +89,8 @@ class DSR:
     self.__route_cache = route_cache.RouteCache(self.ID)
     self.__seen = {} # set of (id, fromID) tuples representing which pakcets have been seen already
 
-  #works like a constructor
-  #make a packet out of some arguments
-  def make_packet(self, type, path, contents):
+  #Generate a DSR packet
+  def __make_packet(self, type, path, contents):
     pkt = Packet()
     pkt.type = type
     pkt.path = path
@@ -104,7 +100,8 @@ class DSR:
     self.next_packet_id += 1
     return pkt
 
-  def make_packet_o(self, type, path, contents, originator):
+  #Generate a DSR packet
+  def __make_packet_o(self, type, path, contents, originator):
     pkt = Packet()
     pkt.type = type
     pkt.path = path
@@ -114,18 +111,17 @@ class DSR:
     self.next_packet_id += 1
     return pkt
 
-  #===========================================================
-  #TRANSMISSION
-
-  #===========================================================
-  #broadcast the message to every node
+  #-----------------------------------------------------------
+  #                     NETWORK - SENDING
+  #-----------------------------------------------------------
+  #Broadcast the message to every node
   def __network_broadcast(self, pkt):
     pkt.fromID = -1
     pkt.toID = -1
     self.network.send(str(pkt), -1)
     return
 
-  #send a packet to a given destination
+  #Send a packet to a given destination
   def __network_sendto(self, pkt, toID):
     pkt.fromID = self.ID
     pkt.toID = toID
@@ -135,16 +131,11 @@ class DSR:
     #print("Sending Packet of Type {} To {}".format(pkt.type, toID))
     return
 
-
-  def send_message(self, contents, toID):
-    self.__send_queue.append((contents, toID))
-
-
-  #===========================================================
-  #ROUTE REQUEST
+  #-----------------------------------------------------------
+  #                   DSR - ROUTE REQUEST
+  #-----------------------------------------------------------
   #There is no route currently stored in the cache, call this
   #funtction to discover a route the destination.
-  #===========================================================
   def __route_request(self, msg):
     #print("Route request for ID {} with path {}".format(msg.contents, msg.path))
     if int(msg.contents) == self.ID:
@@ -161,12 +152,12 @@ class DSR:
       #print("Route request: Appending myself to path {}".format(msg.path))
       self.__network_broadcast(self.make_packet_o(DSRMessageType.REQUEST, msg.path, msg.contents, msg.originatorID))
 
-  #===========================================================
-  #ROUTE REPLY
+  #-----------------------------------------------------------
+  #                   DSR - ROUTE REPLY
+  #-----------------------------------------------------------
   #It hears a Route Request message.
   #If there is a route stored in the cache, then replies back with the route.
   #Otherwise broadcast the Route Request message to its neighbours.
-  #===========================================================
   def __route_reply(self, msg):
     #if i am the originator of the message then remove it from the send buffer
     #if not, then send it to the next guy on the list
@@ -196,10 +187,10 @@ class DSR:
     #need to start route discovery if a link is broken
     #i havn't added this yet because I am not sure how the network layer will let us know
 
-  #===========================================================
-  #ROUTE ERROR
+  #-----------------------------------------------------------
+  #                   DSR - ROUTE ERROR
+  #-----------------------------------------------------------
   #Generate an error message if there is error reading cache
-  #===========================================================
   def __route_error(self, msg):
       global DSRMessageType
       #self.__remove_from_cache(msg.contents)
@@ -224,10 +215,9 @@ class DSR:
       self.__network_sendto(self.make_packet(DSRMessageType.SEND, msg.path, msg.contents), int(msg.path[next_index]))
     #need to start route discovery if a link is broken
 
-  #===========================================================
-  #ROUTE DISCOVERY
-
-  #===========================================================
+  #-----------------------------------------------------------
+  #                DSR - ROUTE DISCOVERY
+  #-----------------------------------------------------------
   def __route_discover(self, msg, toID):
     #lookup route cache not implemented
     #start route discovery
@@ -237,10 +227,9 @@ class DSR:
     self.__send_buffer.append((msg, temp.originatorID, start, counter))
     self.__network_broadcast(temp)
 
-  #===========================================================
-  #RECEIVING
-
-  #===========================================================
+  #-----------------------------------------------------------
+  #                DSR - ACKOWLEDGEMENT
+  #-----------------------------------------------------------
   def __msg_acknowledgement(self, msg):
     for ack in self.__awaiting_acknowledgement_buffer:
       #print("Acknowledging {} vs {}".format(ack[0].id, msg.originatorID))
@@ -248,18 +237,22 @@ class DSR:
         self.__awaiting_acknowledgement_buffer.remove(ack)
         return
 
+  #-----------------------------------------------------------
+  #                   DSR - SENDING
+  #-----------------------------------------------------------
+  #Append the message to the send queue
+  def send_message(self, contents, toID):
+    self.__send_queue.append((contents, toID))
+
+  #-----------------------------------------------------------
+  #                 DSR - RECEIVING
+  #-----------------------------------------------------------
   def receive_packet(self, pkt):
     a = Packet.from_str(pkt)
     if int(a.toID) != self.ID and int(a.toID) != -1:
         return #do promiscuous stuff
     self.__receive_queue.append(a)
     #print('{} Packet Received! {}'.format(self.ID, pkt))
-
-  def receive_packet_ori(self, pkt):
-    pkt2 = Packet.from_str(pkt)
-    if int(pkt2.toID) != self.ID and int(pkt2.toID) != -1:
-      pass #do stuff promiscuously later
-    self.__receive_queue.append(Packet.from_str(pkt))
 
   def pop_messages(self):
     tmp = self.__done_buffer
@@ -274,11 +267,9 @@ class DSR:
         return msg
     return None
 
-  #===========================================================
-  #AWAITING
-
-  #===========================================================
-
+  #-----------------------------------------------------------
+  #                     AWAITING
+  #-----------------------------------------------------------
   def __check_ack_buffer(self):
     print("Checking ack buffer")
     print(self.__awaiting_acknowledgement_buffer)
