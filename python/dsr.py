@@ -120,6 +120,7 @@ class DSR:
     pkt.fromID = -1
     pkt.toID = -1
     self.__outbox.append((str(pkt), -1))
+    print("Broadcasting Packet {}".format(pkt))
     return
 
   #Send a packet to a given destination
@@ -129,7 +130,7 @@ class DSR:
     if pkt.type != DSRMessageType.ACK:
       self.__add_to_ack_buffer(pkt)
     self.__outbox.append((str(pkt), toID))
-    #print("Sending Packet of Type {} To {}".format(pkt.type, toID))
+    print("Sending Packet of Type {} To {}  {}".format(pkt.type, toID, pkt))
     return
 
   #-----------------------------------------------------------
@@ -233,8 +234,8 @@ class DSR:
   #-----------------------------------------------------------
   def __msg_acknowledgement(self, msg):
     for ack in self.__awaiting_acknowledgement_buffer:
-      #print("Acknowledging {} vs {}".format(ack[0].id, msg.originatorID))
-      if int(ack[0].id) == int(msg.originatorID):
+      if int(ack[0].id) == int(msg.contents):
+        print("Acknowledging packet {} in response to {}".format(ack[0], msg))
         self.__awaiting_acknowledgement_buffer.remove(ack)
         return
 
@@ -253,7 +254,7 @@ class DSR:
     if int(a.toID) != self.ID and int(a.toID) != -1:
         return #do promiscuous stuff
     self.__receive_queue.append(a)
-    #print('{} Packet Received! {}'.format(self.ID, pkt))
+    print(' ---NET--- {} Packet Received! {}'.format(self.ID, pkt))
 
   #pops all the messages this dsr node has received
   #and which were destined for it
@@ -284,6 +285,7 @@ class DSR:
     print(self.__awaiting_acknowledgement_buffer)
     for ack in self.__awaiting_acknowledgement_buffer:
       if ack[2] > MAX_transmissions:
+        print ("Giving up!")
         intpath = [int(value) for value in ack[0].path]
         next_index = intpath.index(self.ID)+1
         unreachable_node = ack[0].path[next_index]
@@ -293,8 +295,6 @@ class DSR:
       else:
         end = time.time()
         elapsed = end - int(ack[1])
-        print(ack)
-        print("Elapsed {}".format(elapsed))
         if elapsed > MAX_time_between_ack:
           msg = ack[0]
           intpath = [int(value) for value in ack[0].path]
@@ -312,7 +312,7 @@ class DSR:
         return
     start = time.time()
     self.__awaiting_acknowledgement_buffer.append((pkt,start,1))
-    print("Adding to ack")
+    print("Adding to ack: {}".format(pkt))
     #print("Add pkt with originator ID {} to ack".format(pkt.originatorID))
 
   def __check_send_buffer(self):
@@ -332,16 +332,16 @@ class DSR:
   #-----------------------------------------------------------
   #This method updates the node periodically
   def update(self):
-    self.__check_ack_buffer()
+    #self.__check_ack_buffer()
     self.__check_send_buffer()
     for msg in self.__receive_queue:
       #avoid self self messages
       if msg.fromID == self.ID:
         continue
       #send acknowledgement message back
-      if msg.toID != -1 and msg.type == DSRMessageType.SEND: #-1 fromID means broadcast
-        #print("Sending acknowledgement for orginator ID {}".format(msg.originatorID))
-        self.__network_sendto(self.__make_packet_o(DSRMessageType.ACK, [], msg.id, msg.originatorID), int(msg.fromID))
+      if msg.toID != -1 and msg.type != DSRMessageType.ACK: #-1 fromID means broadcast
+        print("Sending acknowledgement for orginator ID {}".format(msg.originatorID))
+        self.__network_sendto(self.__make_packet(DSRMessageType.ACK, [], msg.id), int(msg.fromID))
       if msg.type == DSRMessageType.REQUEST:
         self.__route_request(msg)
       elif msg.type == DSRMessageType.REPLY:
