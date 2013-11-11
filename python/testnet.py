@@ -56,32 +56,40 @@
 
 import dsr
 
+class Node:
+  def __init__(self, id):
+    self.id = id
+    self.neighbours = []
+    self.dsr = dsr.DSR(id)
+  def update(self):
+    self.dsr.update()
+    received = self.dsr.pop_inbox()
+    toSend = self.dsr.pop_outbox()
+    for r in received:
+      print ("Received packet for node #"+str(self.id)+" : {}".format(r))
+    for ts in toSend:
+      for n in self.neighbours:
+        n.dsr.receive_packet(ts[0])
+  def addN(self, n):
+    self.neighbours.extend(n)
+
 class TestNet:
   def __init__(self):
-    self.dsr1 = dsr.DSR(1)
-    self.dsr2 = dsr.DSR(2)
-    self.dsr3 = dsr.DSR(3)
-  def send(self, msg, addr):
-    self.dsr1.receive_packet(msg)
-    self.dsr2.receive_packet(msg)
-    self.dsr3.receive_packet(msg)
+    self.nodes = [Node(0), Node(1), Node(2)]
+    self.nodes[0].addN([self.nodes[1], self.nodes[2]])
+    self.nodes[1].addN([self.nodes[0], self.nodes[2]])
+    self.nodes[2].addN([self.nodes[0], self.nodes[1]])
+    #self.nodes[2].addN([self.nodes[0], self.nodes[1]])
   def runSim(self):
-    self.dsr1.send_message("test packet weeeeeeeee", 2)
-    while True:
-      tmp = self.dsr1.pop_outbox()
-      tmp.extend(self.dsr2.pop_outbox())
-      tmp.extend(self.dsr3.pop_outbox())
-      for p in tmp:
-        self.send(p[0],p[1])
-      self.dsr1.update()
-      self.dsr2.update()
-      self.dsr3.update()
-      msgs = self.dsr1.pop_inbox()
-      msgs.extend(self.dsr2.pop_inbox())
-      msgs.extend(self.dsr3.pop_inbox())
-      if msgs != []:
-        print("Messages receied by dsr2 : {} path was {}".format(msgs[0].contents, msgs[0].path))
-        return
+    node = self.nodes[0]
+    node.dsr.send_message("test packet weeeeeeeee", 2)
+    for i in range(1,10):
+      print("STARTING SIMULATION STEP #"+str(i))
+      for n in self.nodes:
+        print("===================Node #"+str(n.id)+"====================")
+        n.update()
+        print("--------------------------------------------")
+        print(" ")
 
 if __name__ == '__main__':
   tn = TestNet()
