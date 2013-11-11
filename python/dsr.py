@@ -277,7 +277,7 @@ class DSR:
     return None
 
   #-----------------------------------------------------------
-  #                     AWAITING
+  #                     DSR - AWAITING
   #-----------------------------------------------------------
   def __check_ack_buffer(self):
     print("Checking ack buffer")
@@ -327,6 +327,10 @@ class DSR:
         self.__send_buffer.remove(send)
         self.__send_buffer.append((msg, originatorID, start, counter))
 
+  #-----------------------------------------------------------
+  #                     UPDATE
+  #-----------------------------------------------------------
+  #This method updates the node periodically
   def update(self):
     self.__check_ack_buffer()
     self.__check_send_buffer()
