@@ -55,45 +55,104 @@
 #===============================================================================
 
 import dsr
+import random
+import string
 
+SIMULATION_STEPS = 10
+               # x  0  1  2  3  4        y
+CAN_TALK = [(0,  [ [0, 1, 1, 1, 1],    # 0
+                   [1, 0, 1, 1, 1],    # 1
+                   [1, 1, 0, 1, 1],    # 2
+                   [1, 1, 1, 0, 1],    # 3
+                   [1, 1, 1, 1, 0] ]), # 4
+                   #note that the first matrix must always be at time 0
+
+            (3,  [ [0, 1, 1, 1, 1],
+                   [1, 0, 1, 1, 1],
+                   [1, 1, 0, 1, 1],
+                   [1, 1, 1, 0, 1],
+                   [1, 1, 1, 1, 0] ]),
+
+            (6,  [ [0, 0, 0, 0, 0],
+                   [0, 0, 0, 0, 0],
+                   [0, 0, 0, 0, 0],
+                   [0, 0, 0, 0, 0],
+                   [0, 0, 0, 0, 0] ]),
+
+            (9,  [ [0, 1, 1, 1, 1],
+                   [1, 0, 1, 1, 1],
+                   [1, 1, 0, 1, 1],
+                   [1, 1, 1, 0, 1],
+                   [1, 1, 1, 1, 0] ]),
+                   
+            (SIMULATION_STEPS+1,  #this should never be reached!
+                 [ [0, 1, 1, 1, 1],
+                   [1, 0, 1, 1, 1],
+                   [1, 1, 0, 1, 1],
+                   [1, 1, 1, 0, 1],
+                   [1, 1, 1, 1, 0] ])]
+
+
+           # 0 = False
+           # 1 = True
+           
+NODE_LIST = []
+
+
+#generates a random string
+def random_string():
+  return ''.join([random.choice(string.ascii_letters) for _ in range(6)])
+           
+
+
+#A simulation wrapped for a DSR Node
+#Handles the simulated application and network layers
 class Node:
   def __init__(self, id):
     self.id = id
-    self.neighbours = []
     self.dsr = dsr.DSR(id)
-  def update(self):
+  def update(self, curr_matrix):
+    #update the dsr object
     self.dsr.update()
+    #get all the incoming/outgoing messages
     received = self.dsr.pop_inbox()
     toSend = self.dsr.pop_outbox()
+    #display all the messages received by the application layer
     for r in received:
-      print ("Received packet for node #"+str(self.id)+" : {}".format(r))
-    for ts in toSend:
-      for n in self.neighbours:
-        n.dsr.receive_packet(ts[0])
-  def addN(self, n):
-    self.neighbours.extend(n)
+      print (" ------APPLICATION------ Received packet for node #"+str(self.id)+" : {}".format(r))
+    #broadcast all messages on the network required by dsr
+    can_talk_list = curr_matrix[self.id]
+    for ts in toSend: #for every message to send
+      for n in range(0, len(can_talk_list)): #for all nodes
+        if can_talk_list[n] == 1: #send if connected in the network
+          NODE_LIST[n].dsr.receive_packet(ts[0])
 
-class TestNet:
-  def __init__(self):
-    self.nodes = [Node(0), Node(1), Node(2)]
-    self.nodes[0].addN([self.nodes[1], self.nodes[2]])
-    self.nodes[1].addN([self.nodes[0], self.nodes[2]])
-    self.nodes[2].addN([self.nodes[0], self.nodes[1]])
-    #self.nodes[2].addN([self.nodes[0], self.nodes[1]])
-  def runSim(self):
-    node = self.nodes[0]
-    node.dsr.send_message("test packet weeeeeeeee", 2)
-    for i in range(1,10):
-      print("STARTING SIMULATION STEP #"+str(i))
-      for n in self.nodes:
-        print("===================Node #"+str(n.id)+"====================")
-        n.update()
-        print("--------------------------------------------")
-        print(" ")
 
 if __name__ == '__main__':
-  tn = TestNet()
-  tn.runSim()
+  #init node list
+  for i in range(0, len(CAN_TALK[0][1])):
+    NODE_LIST.append(Node(i))
+  #setup initial connectivity matrix
+  curr_matrix = CAN_TALK[0][1]
+  curr_index = 0
+  for i in range(1,SIMULATION_STEPS):
+    #a random message is sent
+    fromN = random.randrange(len(NODE_LIST))
+    toN = random.randrange(len(NODE_LIST))
+    msg = random_string()
+    print(" ------SIMULATOR-----  "+str(fromN)+" sends '"+msg+"' to "+str(toN))
+    NODE_LIST[fromN].dsr.send_message(random_string(), toN)
+    #switch to the next can talk matrix, if the current
+    #iteration step matches the next network change
+    if CAN_TALK[curr_index+1][0] == i:
+      curr_matrix = CAN_TALK[curr_index+1][1]
+    print("STARTING SIMULATION STEP #"+str(i))
+    #step through all nodes and updare them
+    for n in NODE_LIST:
+      print("===================Node #"+str(n.id)+"====================")
+      n.update(curr_matrix)
+      print("--------------------------------------------")
+      print(" ")
 
 
 
