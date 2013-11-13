@@ -67,8 +67,8 @@ import ast
 import route_cache
 from dsr_packet import DSRMessageType, Packet
 
-MAX_transmissions = 2
-MAX_time_between_ack = 1
+MAX_transmissions = 1
+MAX_time_between_ack = 0.1
 MAX_time_between_request = 1
 
 #DSR Routing Algorithm
@@ -171,15 +171,7 @@ class DSR:
       contents = self.__remove_from_send_buffer(msg.originatorID)
       if contents == None:
         return
-      if isinstance(contents, Packet):
-        intpath = [int(value) for value in contents.path]
-        index = intpath.index(self.ID)
-        newpath = intpath[:index]
-        newpath.extend(rev_path)
-        contents.path = newpath
-        self.__network_sendto(contents, int(rev_path[next_index]))
-      else:
-        self.__network_sendto(self.__make_packet(DSRMessageType.SEND, rev_path, contents), int(rev_path[next_index]))
+      self.__network_sendto(self.__make_packet(DSRMessageType.SEND, rev_path, contents), int(rev_path[next_index]))
       #print("Sending message {} to {} via path {}".format(contents, rev_path[next_index], rev_path))
     else:
       intpath = [int(value) for value in msg.path]
@@ -285,12 +277,13 @@ class DSR:
     print(self.__awaiting_acknowledgement_buffer)
     for ack in self.__awaiting_acknowledgement_buffer:
       if ack[2] > MAX_transmissions:
-        print ("Giving up!")
+        print ("Giving up {}!".format(ack))
         intpath = [int(value) for value in ack[0].path]
         next_index = intpath.index(self.ID)+1
         unreachable_node = ack[0].path[next_index]
         self.__network_broadcast(self.__make_packet(DSRMessageType.ERROR, [self.ID],  unreachable_node))
-        self.__route_discover(ack[0], int(unreachable_node))
+        if (ack[0].type == DSRMessageType.SEND):
+          self.__route_discover(ack[0].contents, ack[0].toID)
         self.__awaiting_acknowledgement_buffer.remove(ack)
       else:
         end = time.time()
@@ -300,7 +293,7 @@ class DSR:
           intpath = [int(value) for value in ack[0].path]
           next_index = intpath.index(self.ID)+1
           self.__network_sendto(msg, int(msg.path[next_index]))
-          print("Retransmitting")
+          print("-----Elapsed: {}.   Retransmitting {}".format(elapsed, msg))
 
   def __add_to_ack_buffer(self, pkt):
     for ack in self.__awaiting_acknowledgement_buffer:
@@ -332,7 +325,7 @@ class DSR:
   #-----------------------------------------------------------
   #This method updates the node periodically
   def update(self):
-    #self.__check_ack_buffer()
+    self.__check_ack_buffer()
     self.__check_send_buffer()
     for msg in self.__receive_queue:
       #avoid self self messages
@@ -340,7 +333,7 @@ class DSR:
         continue
       #send acknowledgement message back
       if msg.toID != -1 and msg.type != DSRMessageType.ACK: #-1 fromID means broadcast
-        print("Sending acknowledgement for orginator ID {}".format(msg.originatorID))
+        print("Sending acknowledgement for orginator ID {} for message {}".format(msg.originatorID, msg))
         self.__network_sendto(self.__make_packet(DSRMessageType.ACK, [], msg.id), int(msg.fromID))
       if msg.type == DSRMessageType.REQUEST:
         self.__route_request(msg)
