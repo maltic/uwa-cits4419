@@ -57,10 +57,15 @@
 from collections import defaultdict
 import time
 
+#Returns current time
 def millis():
   return int(round(time.time() * 1000))
 
+#Route Cache
 class RouteCache:
+  #-----------------------------------------------------------
+  #                    INITIALISATIONS
+  #-----------------------------------------------------------
   def __init__(self, myID):
     #graph representation
     self.__edge_list = defaultdict(set)
@@ -71,28 +76,36 @@ class RouteCache:
     #maximum age of a link in milliseconds
     self.__MAX_DELTA = 1000
 
+  #-----------------------------------------------------------
+  #                           ADD
+  #-----------------------------------------------------------
+  #attach the route information into the cache
   def offer_route(self, route):
-    #attach the route information into the cache
     for i in range(len(route)-1):
       self.add_link(route[i], route[i+1])
-    
+
+  #adds a single link the cache
   def add_link(self, fromID, toID):
-    #adds a single link the cache
     t = millis()
     self.__edge_list[fromID].add(toID)
     self.__edge_list[toID].add(fromID)
     self.__edge_age[fromID][toID] = t
     self.__edge_age[toID][fromID] = t
 
+  #-----------------------------------------------------------
+  #                         REMOVE
+  #-----------------------------------------------------------
+  #removes a given link from the cache
   def remove_link(self, fromID, toID):
-    #removes a given link from the cache
     self.__edge_list[fromID].discard(toID)
     self.__edge_list[toID].discard(fromID)
     del self.__edge_age[fromID][toID]
     del self.__edge_age[toID][fromID]
-    
+
+  #-----------------------------------------------------------
+  #               FINDING THE SHORTEST PATH
+  #-----------------------------------------------------------
   def get_shortest_path(self, toID):
-  
     #expire old links
     currT = millis()
     r = [] # things to delete
@@ -105,7 +118,7 @@ class RouteCache:
     for a, b in r:
       del self.__edge_age[a][b]
       self.__edge_list[a].discard(b)
-          
+
     #perform a simple bfs to find the SSSP
     q = []
     q.append(self.__me)
@@ -121,6 +134,7 @@ class RouteCache:
           parent[child] = curr
           q.append(child)
           visited.add(child)
+
     #follow parent ids to rebuild path
     if toID in parent:
       path = []
@@ -131,10 +145,11 @@ class RouteCache:
       return list(reversed(path))
     else:
       return None
-      
-      
-    
-    
+
+
+#-----------------------------------------------------------
+#                          TEST CASES
+#-----------------------------------------------------------
 if __name__ == '__main__':
   print("Just some testing, don't mind me...")
   rc = RouteCache(5)
