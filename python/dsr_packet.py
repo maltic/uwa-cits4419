@@ -70,13 +70,13 @@ class DSRMessageType:
 class Packet:
   def __init__(self):
     #work out what these are by parsing packet
-    self.type = 0
-    self.path = []
-    self.contents = ""
-    self.id = -1
-    self.fromID = -1
-    self.originatorID = -1
-    self.toID = -1
+    self.type = 0             #message type
+    self.path = []            #path from sender to receiver
+    self.contents = ""        #DSR packet data content
+    self.id = -1              #DSR packet sequence ID
+    self.fromID = -1          #sender's node ID
+    self.originatorID = -1    #source packet ID (the ID of the very first packet from the originator)
+    self.toID = -1            #receiver's node ID
 
   #prints out information of this packet
   def __str__(self):
