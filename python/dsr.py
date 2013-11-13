@@ -245,6 +245,7 @@ class DSR:
   #Append the message to the send queue
   def send_message(self, contents, toID):
     self.__send_queue.append((contents, toID))
+    print("DSR sending message '" + str(contents) + "'")
 
   #-----------------------------------------------------------
   #                 DSR - RECEIVING
