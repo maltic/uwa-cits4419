@@ -1,0 +1,150 @@
+------------------------------------------------------------------
+DSR Test Cases Scenario
+------------------------------------------------------------------
+
+Sample Nodes: A->B->C->D->E
+              --->P
+
+------------------------------------------------------------------
+Route Discovery
+------------------------------------------------------------------
+1. Automatic route discovery
+- DSR is successfully performs automatic route discovery
+
+2. On-Demand route discovery
+- DSR is successfully performs route discovery only on demand. No periodic broadcasting
+involved.
+
+------------------------------------------------------------------
+Route Request
+------------------------------------------------------------------
+1. Sending route request
+- DSR is successfully allows nodes firstly search their own route cache to see 
+whether they have stored route to destination node
+- If nodes have the route, then nodes successfully sends that route to source node, else, 
+nodes broadcast the route request message to their neighbours and attach their own ID to 
+the route request message
+
+2. Route request frequency
+- DSR is successfully allows source node to wait 
+for a fixed amount of time before initiating another route request 
+to avoid flooding the network.
+
+3. Hop limit
+- DSR is successfully controls the route request to neighbourhood area to avoid
+unnecessary route reply message
+
+4. Restricted Propagation of Route Request
+- DSR is successfully increase hop count proportionately when receiving
+no route reply messages
+to avoid network congestion an unnecessary route reply messages
+(i.e. start with distance 2, then when no reply message, increase distance to 3 and so on)
+
+------------------------------------------------------------------
+Route Cache
+------------------------------------------------------------------
+1. Maintaining route cache information
+- Each node is successfully maintains a route cache and remember the routes that it has 
+learnt about
+
+2. Route cache updates
+- DSR is successfully maintains an up-to-date information in the route cache for each node
+
+3. Route cache has no available information
+- DSR is successfully initiate a new route discovery when no route cache information available
+
+4. Caching overhear routing information
+- DSR is successfully allows node P to store overhear routing information in its route cache
+from node B to node C. DSR is also successfully use this information when node P
+receive route request from node B to node C.
+
+------------------------------------------------------------------
+Route Reply
+------------------------------------------------------------------
+1. Complete route discovery
+- DSR is successfully send route reply meesage from destination node that has route to
+destination in its route cache
+
+2. Partial route discovery
+- DSR is successfully send route reply message from intermediate node that has route to
+destination in its route cache
+
+3. Waiting before reply
+- All nodes successfully wait for a random a amount of time and listen to the traffic 
+before sending route reply message to avoid network congestion and packet collisions
+
+4. Accummulated route reply
+- DSR is successfully send route reply message back to the source node using
+accummulated route (the nodes through which it has passed)
+
+5. Route reply storm
+- DSR is successfully avoid route reply storm 
+(many nodes try to send route reply for the same destination which may flood the network)
+
+
+------------------------------------------------------------------
+Route Maintenance
+------------------------------------------------------------------
+1. Alternative route for broken route
+- DSR is successfully uses alternative route stored in route cache when priority 
+route is broken
+
+2. New route discovery for broken route
+- DSR is successfully discover new route when priority route is broken 
+and route cache has no alternative route stored
+
+3. Active acknowledgement
+- DSR is successfully restransmit packet for a fixed number of times 
+if no acknowledgement received
+
+4. Passive acknowledgement
+- DSR is successfully send acknowledgement to node A when node A overhear 
+the forwarding of the packet to node B and knows that node B successfully 
+received the packet
+
+5. Spreading route Error Message
+- DSR is successfully send error message if the nodes do not receive any acknowledgement
+after restransmit message for a fixed number of times
+
+6. On-Demand route maintenance
+- DSR is successfully operates route maintenance only on demand. No periodic broadcasting
+involved.
+
+7. Changing in communication pattern
+- Number of overhead packets increases and DSR is successfully performs 
+new route discovery
+and new route discovery packets are the overhead packets.
+
+8. Packet salvaging
+- DSR is successfully indicates to the other nodes that the packet sent has been salvaged
+when the node receives route error message and re-send the packet that cause route error
+
+8. Automatic route shortening
+- DSR is successfully performs automatic route shortening. 
+Destination node informs source node
+that it can ignore several intermediate nodes
+
+------------------------------------------------------------------
+Others
+------------------------------------------------------------------
+1. Packet Size
+- DSR is successfully send smaller size of overhead packets
+(DSR is designed to send smaller packet)
+
+2. Drop packets when nodes are static
+- DSR is successfully drop the number of overhead packets to zero when 
+the nodes are static and all routes have been discovered
+
+3. Energy-efficient
+- DSR is successfully showing more energy-efficient and 
+does not congest the network with too many control messages
+
+4. Unique ID
+- DSR is successfully assign unique ID for each node
+
+5. Promiscuous mode of operation
+- DSR is successfully allows each node to overhear or not to overhear other 
+nodes' transmission
+
+
+

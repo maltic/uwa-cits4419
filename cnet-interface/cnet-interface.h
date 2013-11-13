@@ -1,11 +1,15 @@
-#include <cnet.h>
-#include <cnetsupport.h>
+#include "../cnet/cnet.h"
+#include "../cnet/cnetsupport.h"
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-
-
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <errno.h>
 
 
 typedef struct
@@ -30,6 +34,8 @@ typedef struct
 //set to frame size so we don't have to bother with a transport layer
 
 #define MAXHOPS 1
+
+#define PIPE_MSG_SIZE 100
 
 /*TIMERS*/
 #define EV_LINK_SEND EV_TIMER1

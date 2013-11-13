@@ -100,7 +100,7 @@ def _node_simulation(q, log_to, node_addr, other_nodes, loops):
   sys.stderr = open(log_to+".err", 'a')
   print('SIMULATOR: Node {} online'.format(node_addr))
 
-  d = dsr.DSR(q, node_addr)
+  d = dsr.DSR(node_addr)
 
   for i in range(loops):
     print('== LOOP {} =='.format(i))
@@ -109,19 +109,28 @@ def _node_simulation(q, log_to, node_addr, other_nodes, loops):
 
     print('SIMULATOR: Sending "{}" to {}'.format(contents, to))
     d.send_message(contents, to)
+     
+    out_pipe = q[0] #get the output pipe
+    #send everything in the nodes outbox
+    for msg, addr in d.pop_outbox():
+      out_pipe.send((addr,msg)) #place mesage on pipe to be send on network
+      
+    in_pipe = q[1]
+    while in_pipe.poll():
+      d.receive_packet(in_pipe.recv()[1])
 
     time.sleep(0.5)
     d.update()
     time.sleep(0.5)
 
-    frommsg = d.pop_messages()
+    frommsg = d.pop_inbox()
     print('SIMULATOR: From messages; {}'.format(frommsg))
     print()
 
     sys.stdout.flush()
     sys.stderr.flush()
 
-  d.network.stop_timer()
+  #d.network.stop_timer()
   print('==== END ====')
 
 class Simulator:
@@ -168,6 +177,7 @@ class Simulator:
           toaddr, msg = pipe.recv()
           for j, opipe in enumerate(self.out_pipes):
             if self.can_talk(i, j):
+              print ("is there anybody out there")
               opipe.send((i, msg))
 
     print('Completed. Consult logs at "{}" for more info'.format(self.comm_loc))

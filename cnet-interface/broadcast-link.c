@@ -98,4 +98,5 @@ void link_init()
         CHECK(CNET_set_handler(EV_PHYSICALREADY, receive, 0));
 	CHECK(CNET_set_handler(EV_LINK_SEND, send_timer,0));
         frame_queue = queue_new();
+	printf("%d: Finished link_init()\n",nodeinfo.address);
 }
