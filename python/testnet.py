@@ -57,6 +57,7 @@
 import dsr
 import random
 import string
+import sys
 
 SIMULATION_STEPS = 10
                # x  0  1  2  3  4        y
@@ -129,6 +130,10 @@ class Node:
 
 
 if __name__ == '__main__':
+  fp = open("test.log", "w")
+  fp.write("")
+  fp.close()
+  sys.stdout = open("test.log", "a")
   #init node list
   for i in range(0, len(CAN_TALK[0][1])):
     NODE_LIST.append(Node(i))
