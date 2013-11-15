@@ -59,7 +59,7 @@ import random
 import string
 import sys
 
-SIMULATION_STEPS = 10
+SIMULATION_STEPS = 30
                # x  0  1  2  3  4        y
 CAN_TALK = [(0,  [ [0, 1, 1, 1, 1],    # 0
                    [1, 0, 1, 1, 1],    # 1
@@ -74,13 +74,13 @@ CAN_TALK = [(0,  [ [0, 1, 1, 1, 1],    # 0
                    [1, 1, 1, 0, 1],
                    [1, 1, 1, 1, 0] ]),
 
-            (6,  [ [0, 0, 0, 0, 0],
+            (10,  [ [0, 0, 0, 0, 0],
                    [0, 0, 0, 0, 0],
                    [0, 0, 0, 0, 0],
                    [0, 0, 0, 0, 0],
                    [0, 0, 0, 0, 0] ]),
 
-            (9,  [ [0, 1, 1, 1, 1],
+            (11,  [ [0, 1, 1, 1, 1],
                    [1, 0, 1, 1, 1],
                    [1, 1, 0, 1, 1],
                    [1, 1, 1, 0, 1],
@@ -130,10 +130,7 @@ class Node:
 
 
 if __name__ == '__main__':
-  fp = open("test.log", "w")
-  fp.write("")
-  fp.close()
-  sys.stdout = open("test.log", "a")
+  #Whoever added the stupid log file bullshit: you can just pipe to a log file (python testnet.py > logfile)
   #init node list
   for i in range(0, len(CAN_TALK[0][1])):
     NODE_LIST.append(Node(i))
@@ -152,7 +149,9 @@ if __name__ == '__main__':
     #switch to the next can talk matrix, if the current
     #iteration step matches the next network change
     if CAN_TALK[curr_index+1][0] == i:
+      print(" ------SIMULATOR-----  Swapping matrix")
       curr_matrix = CAN_TALK[curr_index+1][1]
+      curr_index += 1
     print("STARTING SIMULATION STEP #"+str(i))
     #step through all nodes and updare them
     for n in NODE_LIST:
