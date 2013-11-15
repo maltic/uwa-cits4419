@@ -60,6 +60,11 @@
 #TODO
 #===============================================================================
 
+#todo list
+#Fix errors by completely removing ack messages
+#instead we only do special ones for DSR send
+#also need to use route cache for other nodes propagating route requests?
+
 
 import simulator_network
 import time
