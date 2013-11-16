@@ -54,6 +54,9 @@
 #
 #===============================================================================
 
+
+from ast import literal_eval as make_tuple
+
 #-----------------------------------------------------------
 #                     MESSAGE TYPE
 #-----------------------------------------------------------
@@ -63,6 +66,7 @@ class DSRMessageType:
   ERROR = 3
   SEND = 4
   ACK = 5
+  ERRREQ = 6 #error route request: used to propagate a broken link with a route request
 
 #-----------------------------------------------------------
 #                     DSR PACKET
@@ -77,10 +81,11 @@ class Packet:
     self.fromID = -1          #sender's node ID
     self.originatorID = -1    #source packet ID (the ID of the very first packet from the originator)
     self.toID = -1            #receiver's node ID
+    self.brokenLink = (-1, -1)#the broken link for an ERRREQ message
 
   #prints out information of this packet
   def __str__(self):
-    out = [self.type, ">".join(str(x) for x in self.path), self.contents, self.id, self.fromID, self.originatorID, self.toID]
+    out = [self.type, ">".join(str(x) for x in self.path), self.contents, self.id, self.fromID, self.originatorID, self.toID, self.brokenLink]
     return "|".join(str(x) for x in out)
 
   def __repr__(self):
@@ -98,4 +103,5 @@ class Packet:
     pkt.fromID = int(toks[4])
     pkt.originatorID = int(toks[5])
     pkt.toID = int(toks[6])
+    pkt.brokenLink = make_tuple(toks[7])
     return pkt
