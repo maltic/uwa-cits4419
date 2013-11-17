@@ -67,8 +67,8 @@ import ast
 import route_cache
 from dsr_packet import DSRMessageType, Packet
 
-MAX_transmissions = 2
-MAX_time_between_ack = 0.2
+MAX_transmissions = 3
+MAX_time_between_ack = 1
 MAX_time_between_request = 1
 
 #DSR Routing Algorithm
@@ -89,7 +89,7 @@ class DSR:
     self.ID = node_addr
     self.__route_cache = route_cache.RouteCache(self.ID)
     # set of route reqs which have already been seen
-    # we should probably be expiring old entries
+    # we should probably be expiring old entries from the bellow buffer
     self.__seen_route_requests = set() 
 
   #Generate a DSR packet
@@ -203,10 +203,15 @@ class DSR:
       rev_path = list(reversed(msg.path))
       next_index = 1
       contents = self.__remove_from_send_buffer(msg.originatorID)
+      
+      #skip messages we already sent
       if contents == None:
         return
+        
       pkt = self.__make_packet(DSRMessageType.SEND, rev_path, contents)
+      
       self.__add_to_ack_buffer(pkt) #expect acknowledgement for send
+      
       self.__network_sendto(pkt, int(rev_path[next_index]))
       #print("Sending message {} to {} via path {}".format(contents, rev_path[next_index], rev_path))
     else:
@@ -228,6 +233,7 @@ class DSR:
     self.__network_sendto(self.__make_packet(DSRMessageType.ACK, [], msg.id), int(msg.fromID))
 
     if int(msg.path[-1]) == self.ID:
+      #NOTE: need to make sure we dont re-add messages we already received
       self.__done_buffer.append(msg)
     else:
       intpath = [int(value) for value in msg.path]
@@ -244,8 +250,8 @@ class DSR:
   
     #first attempt to use route cache
     cached_path = self.__route_cache.get_shortest_path(toID)
-    print("Found path to {} using route cache... {}".format(toID, cached_path))
     if cached_path:
+      print("Found path to {} using route cache... {}".format(toID, cached_path))
       pkt = self.__make_packet(DSRMessageType.SEND, cached_path, msg)
       self.__network_sendto(pkt, int(cached_path[1]))
       self.__add_to_ack_buffer(pkt) #expect acknowledgement for send
@@ -253,8 +259,9 @@ class DSR:
       #start route discovery
       temp = self.__make_packet(DSRMessageType.REQUEST, [self.ID], toID)
       start = time.time()
-      counter = 1
-      self.__send_buffer.append((msg, temp.originatorID, start, counter))
+      #add too send buffer
+      #this ensures that we re-broadcast rreqs that are taking too long
+      self.__send_buffer.append((msg, temp.originatorID, start, 1))
       self.__network_broadcast(temp)
     
     
@@ -267,10 +274,15 @@ class DSR:
     self.__route_cache.remove_link(brokenLink[0], brokenLink[1])
     #start route discovery
     temp = self.__make_packet(DSRMessageType.ERRREQ, [self.ID], toID)
+    
+    #propagate the broken link
+    #so that others can remove it from their route cache
     temp.brokenLink = brokenLink
+
     start = time.time()
-    counter = 1
-    self.__send_buffer.append((msg, temp.originatorID, start, counter))
+    #add too send buffer
+    #this ensures that we re-broadcast rreqs that are taking too long
+    self.__send_buffer.append((msg, temp.originatorID, start, 1))
     self.__network_broadcast(temp)
 
 
@@ -308,7 +320,7 @@ class DSR:
       return
         
     self.__receive_queue.append(a)
-    #print(' ---NET--- {} Packet Received! {}'.format(self.ID, pkt))
+    print(' ---NET--- {} Packet Received! {}'.format(self.ID, pkt))
 
   #pops all the messages this dsr node has received
   #and which were destined for it
@@ -346,12 +358,18 @@ class DSR:
         intpath = [int(value) for value in ack[0].path]
         next_index = intpath.index(self.ID)+1
         unreachable_node = ack[0].path[next_index]
+        
+        #sending error packets in depreciated
         #self.__network_broadcast(self.__make_packet(DSRMessageType.ERROR, [self.ID],  unreachable_node))
         
         #do a route discovery with error propagation
         self.__route_discover_with_error(ack[0].contents, ack[0].toID, (self.ID, int(unreachable_node)))
+        #NOTE: this currently causes a bug
+        #if the message does eventually get send, but we assume it was an error
+        #then there is a problem, because we may correctly send the same message twice
+        #however eaching sending (the original, and this error correcting one) will have different ids
         
-        #step waiting for acknowledgement
+        #remove from waiting for acknowledgement
         self.__awaiting_acknowledgement_buffer.remove(ack)
       else:
         end = time.time()
@@ -386,6 +404,8 @@ class DSR:
       end = time.time()
       elapsed = end - int(send[2])
       if elapsed > MAX_time_between_request*send[3]:
+        print("Re route requesting")
+        #NOTE: we still need to resend the packet..?!
         start = time.time()
         counter = int(send[3])+1
         msg = send[0]
