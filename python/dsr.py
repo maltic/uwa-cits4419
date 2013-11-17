@@ -60,11 +60,6 @@
 #TODO
 #===============================================================================
 
-#todo list
-#Fix errors by completely removing ack messages
-#instead we only do special ones for DSR send
-#also need to use route cache for other nodes propagating route requests?
-
 
 import simulator_network
 import time
@@ -150,10 +145,16 @@ class DSR:
       self.__network_sendto(self.__make_packet_o(DSRMessageType.REPLY, rev_path, msg.path[0], msg.originatorID), int(rev_path[1]))
       #print("Sending route reply to {} via path {}".format(msg.path[0], rev_path))
     elif self.ID in [int(value) for value in msg.path]:
+    
+      #NOTE: Could also keep a cache
+      #the cache would contain the originatorID, the id of the node wating a route
+      #could use this to ignore further route requests
+      
       #print("Route request: I'm already in the path {}".format(msg.path))
       #avoid cycles
       pass
     else:
+      #NOTE: Could add a route cache lookup here
       msg.path.append(str(self.ID))
       #print("Route request: Appending myself to path {}".format(msg.path))
       self.__network_broadcast(self.__make_packet_o(DSRMessageType.REQUEST, msg.path, msg.contents, msg.originatorID))
@@ -217,6 +218,7 @@ class DSR:
   #                   DSR - ROUTE ERROR
   #-----------------------------------------------------------
   #Generate an error message if there is error reading cache
+  #NOTE: We can probably get rid of this
   def __route_error(self, msg):
       global DSRMessageType
       
@@ -429,6 +431,7 @@ class DSR:
         self.__route_request_with_error(msg)
       elif msg.type == DSRMessageType.REPLY:
         self.__route_reply(msg)
+      #NOTE: we can probably remove ERROR altogether
       elif msg.type == DSRMessageType.ERROR:
         self.__route_error(msg)
       elif msg.type == DSRMessageType.SEND:
