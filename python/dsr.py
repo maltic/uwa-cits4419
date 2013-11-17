@@ -88,7 +88,9 @@ class DSR:
     self.__awaiting_acknowledgement_buffer = []
     self.ID = node_addr
     self.__route_cache = route_cache.RouteCache(self.ID)
-    self.__seen_errors = set() # set of (fromID, originatorID) tuples representing which errors have been seen already
+    # set of route reqs which have already been seen
+    # we should probably be expiring old entries
+    self.__seen_route_requests = set() 
 
   #Generate a DSR packet
   def __make_packet(self, type, path, contents):
@@ -137,23 +139,20 @@ class DSR:
   #There is no route currently stored in the cache, call this
   #funtction to discover a route the destination.
   def __route_request(self, msg):
-    
+  
+    rr_ident = (msg.path[0], msg.originatorID) #identifier of rreq
     #print("Route request for ID {} with path {}".format(msg.contents, msg.path))
     if int(msg.contents) == self.ID:
       msg.path.append(str(self.ID))
       rev_path = list(reversed(msg.path))
       self.__network_sendto(self.__make_packet_o(DSRMessageType.REPLY, rev_path, msg.path[0], msg.originatorID), int(rev_path[1]))
       #print("Sending route reply to {} via path {}".format(msg.path[0], rev_path))
-    elif self.ID in [int(value) for value in msg.path]:
-    
-      #NOTE: Could also keep a cache
-      #the cache would contain the originatorID, the id of the node wating a route
-      #could use this to ignore further route requests
-      
-      #print("Route request: I'm already in the path {}".format(msg.path))
-      #avoid cycles
+    elif self.ID in [int(value) for value in msg.path] or rr_ident in self.__seen_route_requests :
+      #avoid cyclic requests, and already seen requests
       pass
     else:
+      #add to buffer of route requests already seen
+      self.__seen_route_requests.add(rr_ident)
       #NOTE: Could add a route cache lookup here
       msg.path.append(str(self.ID))
       #print("Route request: Appending myself to path {}".format(msg.path))
@@ -164,9 +163,10 @@ class DSR:
   #          DSR - ROUTE REQUEST WITH ERROR PROPAGATION
   #-----------------------------------------------------------
   def __route_request_with_error(self, msg):
-    print("route req with error")
     #remove from route cache
     self.__route_cache.remove_link(msg.brokenLink[0], msg.brokenLink[1])
+    
+    rr_ident = (msg.path[0], msg.originatorID) #identifier of rreq
     
     #print("Route request for ID {} with path {}".format(msg.contents, msg.path))
     if int(msg.contents) == self.ID:
@@ -175,11 +175,13 @@ class DSR:
       rev_path = list(reversed(msg.path))
       self.__network_sendto(self.__make_packet_o(DSRMessageType.REPLY, rev_path, msg.path[0], msg.originatorID), int(rev_path[1]))
       #print("Sending route reply to {} via path {}".format(msg.path[0], rev_path))
-    elif self.ID in [int(value) for value in msg.path]:
-      #print("Route request: I'm already in the path {}".format(msg.path))
-      #avoid cycles
+    elif self.ID in [int(value) for value in msg.path] or rr_ident in self.__seen_route_requests :
+       #avoid cyclic requests, and already seen requests
       pass
     else:
+      #add to buffer of route requests already seen
+      self.__seen_route_requests.add(rr_ident)
+      
       msg.path.append(str(self.ID))
       pkt = self.__make_packet_o(DSRMessageType.ERRREQ, msg.path, msg.contents, msg.originatorID)
       pkt.brokenLink = msg.brokenLink
@@ -213,29 +215,6 @@ class DSR:
       self.__network_sendto(self.__make_packet_o(DSRMessageType.REPLY, msg.path, msg.contents, msg.originatorID), int(msg.path[next_index]))
       #print("This is not my route reply. Forwarding to {}".format(msg.path[next_index]))
       
-
-  #-----------------------------------------------------------
-  #                   DSR - ROUTE ERROR
-  #-----------------------------------------------------------
-  #Generate an error message if there is error reading cache
-  #NOTE: We can probably get rid of this
-  def __route_error(self, msg):
-      global DSRMessageType
-      
-      err_id = (msg.path[0], msg.originatorID)
-      #avoid infinite error cycles
-      if err_id in self.__seen_errors:
-        print("Skipping error "+str(err_id))
-        return
-        
-      print("Responding to error "+str(err_id))
-      
-      #propagate errors
-      self.__network_broadcast(self.__make_packet(DSRMessageType.ERROR, msg.path, msg.contents))
-      self.__seen_errors.add(err_id)
-      
-      #remove from route cache
-      self.__route_cache.remove_link(msg.path[0], msg.contents)
 
 
   def __route_send(self, msg):
@@ -431,8 +410,7 @@ class DSR:
         self.__route_request_with_error(msg)
       elif msg.type == DSRMessageType.REPLY:
         self.__route_reply(msg)
-      #NOTE: we can probably remove ERROR altogether
-      elif msg.type == DSRMessageType.ERROR:
+      elif msg.type == DSRMessageType.ERROR: #currently not used
         self.__route_error(msg)
       elif msg.type == DSRMessageType.SEND:
         self.__route_send(msg)
@@ -442,5 +420,4 @@ class DSR:
       self.__route_discover(send[0], send[1])
     self.__receive_queue = []
     self.__send_queue = []
-    #need to add exponential backoff from acknoledgement messages and error propagation
 
