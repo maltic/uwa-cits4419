@@ -59,7 +59,7 @@ import random
 import string
 import sys
 
-SIMULATION_STEPS = 10
+SIMULATION_STEPS = 50
                # x  0  1  2  3  4        y
 CAN_TALK = [(0,  [ [0, 1, 1, 1, 1],    # 0
                    [1, 0, 1, 1, 1],    # 1
@@ -71,21 +71,16 @@ CAN_TALK = [(0,  [ [0, 1, 1, 1, 1],    # 0
             (3,  [ [0, 1, 1, 1, 1],
                    [1, 0, 1, 1, 1],
                    [1, 1, 0, 1, 1],
-                   [1, 1, 1, 0, 1],
-                   [1, 1, 1, 1, 0] ]),
+                   [0, 0, 1, 0, 1],
+                   [0, 0, 1, 1, 0] ]),
 
-            (6,  [ [0, 0, 0, 0, 0],
-                   [0, 0, 0, 0, 0],
-                   [0, 0, 0, 0, 0],
-                   [0, 0, 0, 0, 0],
-                   [0, 0, 0, 0, 0] ]),
+            (8,  [ [0, 1, 0, 0, 0],
+                   [1, 0, 1, 0, 0],
+                   [0, 1, 0, 1, 0],
+                   [0, 0, 1, 0, 1],
+                   [0, 0, 0, 1, 0] ]),
 
-            (9,  [ [0, 1, 1, 1, 1],
-                   [1, 0, 1, 1, 1],
-                   [1, 1, 0, 1, 1],
-                   [1, 1, 1, 0, 1],
-                   [1, 1, 1, 1, 0] ]),
-                   
+
             (SIMULATION_STEPS+1,  #this should never be reached!
                  [ [0, 1, 1, 1, 1],
                    [1, 0, 1, 1, 1],
@@ -96,14 +91,14 @@ CAN_TALK = [(0,  [ [0, 1, 1, 1, 1],    # 0
 
            # 0 = False
            # 1 = True
-           
+
 NODE_LIST = []
 
 
 #generates a random string
 def random_string():
   return ''.join([random.choice(string.ascii_letters) for _ in range(6)])
-           
+
 
 
 #A simulation wrapped for a DSR Node
@@ -130,10 +125,7 @@ class Node:
 
 
 if __name__ == '__main__':
-  fp = open("test.log", "w")
-  fp.write("")
-  fp.close()
-  sys.stdout = open("test.log", "a")
+  #Whoever added the stupid log file bullshit: you can just pipe to a log file (python testnet.py > logfile)
   #init node list
   for i in range(0, len(CAN_TALK[0][1])):
     NODE_LIST.append(Node(i))
@@ -144,13 +136,17 @@ if __name__ == '__main__':
     #a random message is sent
     fromN = random.randrange(len(NODE_LIST))
     toN = random.randrange(len(NODE_LIST))
+    while (toN == fromN):
+        toN = random.randrange(len(NODE_LIST))
     msg = random_string()
     print(" ------SIMULATOR-----  "+str(fromN)+" sends '"+msg+"' to "+str(toN))
-    NODE_LIST[fromN].dsr.send_message(random_string(), toN)
+    NODE_LIST[fromN].dsr.send_message(msg, toN)
     #switch to the next can talk matrix, if the current
     #iteration step matches the next network change
     if CAN_TALK[curr_index+1][0] == i:
+      print(" ------SIMULATOR-----  Swapping matrix")
       curr_matrix = CAN_TALK[curr_index+1][1]
+      curr_index += 1
     print("STARTING SIMULATION STEP #"+str(i))
     #step through all nodes and updare them
     for n in NODE_LIST:

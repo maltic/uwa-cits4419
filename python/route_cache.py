@@ -74,7 +74,7 @@ class RouteCache:
     #id of root node
     self.__me = myID
     #maximum age of a link in milliseconds
-    self.__MAX_DELTA = 1000
+    self.__MAX_DELTA = 1000000
 
   #-----------------------------------------------------------
   #                           ADD
@@ -86,21 +86,25 @@ class RouteCache:
 
   #adds a single link the cache
   def add_link(self, fromID, toID):
+    iFromID = int(fromID)
+    iToID = int(toID)
     t = millis()
-    self.__edge_list[fromID].add(toID)
-    self.__edge_list[toID].add(fromID)
-    self.__edge_age[fromID][toID] = t
-    self.__edge_age[toID][fromID] = t
+    self.__edge_list[iFromID].add(iToID)
+    self.__edge_list[iToID].add(iFromID)
+    self.__edge_age[iFromID][iToID] = t
+    self.__edge_age[iToID][iFromID] = t
 
   #-----------------------------------------------------------
   #                         REMOVE
   #-----------------------------------------------------------
   #removes a given link from the cache
   def remove_link(self, fromID, toID):
-    self.__edge_list[fromID].discard(toID)
-    self.__edge_list[toID].discard(fromID)
-    del self.__edge_age[fromID][toID]
-    del self.__edge_age[toID][fromID]
+    iFromID = int(fromID)
+    iToID = int(toID)
+    self.__edge_list[iFromID].discard(iToID)
+    self.__edge_list[iToID].discard(iFromID)
+    self.__edge_age[iFromID].pop(iToID, None)
+    self.__edge_age[iToID].pop(iFromID, None)
 
   #-----------------------------------------------------------
   #               FINDING THE SHORTEST PATH
@@ -142,6 +146,7 @@ class RouteCache:
       while curr != self.__me:
         path.append(curr)
         curr = parent[curr]
+      path.append(self.__me)
       return list(reversed(path))
     else:
       return None
