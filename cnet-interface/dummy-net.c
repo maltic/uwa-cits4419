@@ -4,12 +4,13 @@
 //TODO This probably needs tweaking
 #define ROUTETIME 5000
 
+QUEUE new_messages;
 QUEUE unrouted;
 QUEUE routed;
 FILE* in_pipe;
 FILE* out_pipe;
-off_t in_pos;
-off_t out_pos;
+int inFD;
+int outFD;
 
 
 typedef struct
@@ -20,78 +21,49 @@ typedef struct
 } MSG;
 
 
-EVENT_HANDLER(app_rdy)
+char** str_split(char* a_str, const char a_delim)
 {
-	char msg[MAX_MESSAGE_SIZE];
-        int dest;
-        size_t len = MAX_MESSAGE_SIZE;
-        CHECK(CNET_read_application(&dest, &msg, &len));
-	//should pass off to a transport layer here
-	MSG m;
-	m.h.hops = 0;
-	m.h.len = len;
-	m.h.dest = dest;
-	memcpy(m.msg,msg,len);
-	len = len + MSG_HEADER_SIZE;
-	queue_add(unrouted, &m, len);
-}
+    char** result    = 0;
+    size_t count     = 0;
+    char* tmp        = a_str;
+    char* last_comma = 0;
 
-EVENT_HANDLER(get_routed_messages)
-{
-	//ROUTING WILL HAPPEN IN HERE SOMEHWERE  
+    /* Count how many elements will be extracted. */
+    while (*tmp)
+    {
+        if (a_delim == *tmp)
+        {
+            count++;
+            last_comma = tmp;
+        }
+        tmp++;
+    }
 
-	//send messages that need routing to routing layer
-	//QUEUE to_route = queue_new();
-	while(queue_nitems(unrouted) > 0) {
-		size_t len;
-		MSG* m = queue_remove(unrouted,&len);
-		//printf("Node %d: Message for %d\n",nodeinfo.address,m->h.dest);
-		if(m->h.dest == nodeinfo.address) 
-		{	
-			//printf("Node %d: receiving message\n");
-			size_t len = m->h.len;
-			//TODO we're ignoring duplicate messages
-			CNET_write_application(m->msg,&len);
-		}
-		else
-		{
-			//printf("Node %d: passing message away\n");
-			if(m->h.hops < MAXHOPS) {
-				m->h.hops++;
-				queue_add(routed,m,len); //needs to be changed to to_route eventually;
-			}
-		}
-	}
-	//push everything down everything in to_route to routing layer
-	//for now we just don't route them, we just flood one hop
+    /* Add space for trailing token. */
+    count += last_comma < (a_str + strlen(a_str) - 1);
 
-	//get routed messages
-		
-	//then push everything down to the link layer
-	while(queue_nitems(routed) > 0) {
-		MSG *next;
-		size_t len;
-		next = queue_remove(routed,&len);
-		link_send_data(next,len);
-		//free(next);
-	}
-	CNET_start_timer(EV_DO_ROUTING, ROUTETIME, 1);
-}
+    /* Add space for terminating null string so caller
+       knows where the list of returned strings ends. */
+    count++;
 
-void net_recv(void* msg, int len)
-{
-	//enqueue for routing
-	queue_add(unrouted,msg,len);
-}
+    result = malloc(sizeof(char*) * count);
 
-void net_init()
-{
-	unrouted = queue_new();
-	routed = queue_new();
-	CNET_set_handler(EV_APPLICATIONREADY, app_rdy, 0);
-	CNET_set_handler(EV_DO_ROUTING,get_routed_messages,0);
-	CNET_start_timer(EV_DO_ROUTING, ROUTETIME, 1);
-	printf("%d: Finished net_init()\n",nodeinfo.address);
+    if (result)
+    {
+        size_t idx  = 0;
+        char* token = strtok(a_str, ",");
+
+        while (token)
+        {
+            assert(idx < count);
+            *(result + idx++) = strdup(token);
+            token = strtok(0, ",");
+        }
+        assert(idx == count - 1);
+        *(result + idx) = 0;
+    }
+
+    return result;
 }
 
 char * join_string(char * str1, char * str2)
@@ -132,6 +104,125 @@ int get_from_pipe(int pipefd, char* buf, size_t bufsiz)
 	return num_bytes;
 }
 
+
+EVENT_HANDLER(app_rdy)
+{
+	//printf("%d: Making a message\n",nodeinfo.address);
+	char* msg = malloc((MAX_MESSAGE_SIZE));
+        int dest;
+        size_t len = MAX_MESSAGE_SIZE;
+        CHECK(CNET_read_application(&dest, msg, &len));
+        //printf("%d: got message from CNET\n",nodeinfo.address);
+        char* final_msg = malloc((MAX_MESSAGE_SIZE+1));
+        memcpy(final_msg,msg,len);
+        //printf("%d: copied message\n",nodeinfo.address);
+        *(final_msg+(len)) = '\0';
+        //printf("%d: reallocated\n",nodeinfo.address);
+	printf("%d: Made a message for %d\n",nodeinfo.address,dest);
+	
+	char buf[200];
+	int final_len = sprintf(buf,"MSG.%s.%d\n",final_msg,dest);
+	write(outFD,buf,final_len);
+	
+	/*
+	int num_bytes = 0;
+	if((num_bytes = fprintf(out_pipe,"MSG.%s.%d\n",final_msg,dest)) < 0) {
+		printf("%s\n",strerror(errno));
+	}
+	printf("%d: wrote %d bytes to my dsr\n",nodeinfo.address,num_bytes);
+	*/
+}
+
+int get_msg_type(char *msg, char* buf, size_t bufsiz)
+{
+	return 0;
+}
+
+int get_msg_contents(char* msg, char* buf, size_t bufsiz)
+{
+	return 0;
+}
+
+EVENT_HANDLER(get_routed_messages)
+{
+	//printf("%d: Starting routing\n",nodeinfo.address);
+	//what SHOULD happen
+	//check unrouted queue, send everything to dsr for routing
+	//after this check DSR in_box for messages for app layer
+	//then check DSR out_box for things that need forwarding
+
+	//send messages that need routing to routing layer
+	//QUEUE to_route = queue_new();
+	while(queue_nitems(unrouted) > 0) {
+		size_t len;
+		char* m = queue_remove(unrouted,&len);
+		char buf[100];
+		int final_len = sprintf(buf,"PKT.%s\n",m);
+		write(outFD,buf,final_len);
+		//fprintf(out_pipe,"PKT.%s\n",m->msg);
+	}
+	//push everything down everything in to_route to routing layer
+	//for now we just don't route them, we just flood one hop
+
+	//check pipe for messages for app layer or forwarding
+	char buf[500];
+	while(get_from_pipe(inFD,buf,500) > 0) {
+		printf("%d: Reading message from dsr: %s\n",nodeinfo.address,buf);
+		char type[10];
+		char contents[100];
+		char* tok = strtok(buf,".");
+		if(tok != NULL) {
+			strcpy(type,tok);
+			tok = strtok(NULL,".");
+			strcpy(contents,tok);
+			if(strcmp(type,"MSG") == 0) {
+				printf("%d: A MESSAGE FOR ME!\n",nodeinfo.address);
+				size_t len = strlen(contents);
+				CNET_write_application(contents,&len);
+			} else if(strcmp(type,"FWD") == 0) {
+				printf("%d: getting fwd %s\n",nodeinfo.address,contents);
+				queue_add(routed,contents,strlen(contents));
+			}
+		}
+	}
+	//then push everything down to the link layer
+	while(queue_nitems(routed) > 0) {
+		printf("%d: forwarding messages\n",nodeinfo.address);
+		char *next;
+		size_t len;
+		next = queue_remove(routed,&len);
+		link_send_data(next,len);
+		//free(next);
+	}
+	CNET_start_timer(EV_DO_ROUTING, ROUTETIME, 1);
+}
+
+void net_recv(void* msg, int len)
+{
+	//enqueue for routing
+	queue_add(unrouted,msg,len);
+}
+
+void net_init()
+{
+	unrouted = queue_new();
+	routed = queue_new();
+	new_messages = queue_new();
+	CNET_set_handler(EV_APPLICATIONREADY, app_rdy, 0);
+	CNET_set_handler(EV_DO_ROUTING,get_routed_messages,0);
+	CNET_start_timer(EV_DO_ROUTING, ROUTETIME, 1);
+	printf("%d: Finished net_init()\n",nodeinfo.address);
+}
+
+
+
+EVENT_HANDLER(shutdown)
+{
+	printf("%d: SHUTTING DOWN\n",nodeinfo.address);
+	fprintf(out_pipe,"shutdown\n");
+	fflush(stdout);
+}
+
 EVENT_HANDLER(reboot_node)
 {
 	//init our pipes
@@ -144,14 +235,14 @@ EVENT_HANDLER(reboot_node)
 
 	unlink(in_pipe_name);
 	unlink(out_pipe_name);
-	mkfifo(in_pipe_name,S_IRUSR | S_IWUSR);
-	mkfifo(out_pipe_name,S_IRUSR | S_IWUSR);
+	mkfifo(in_pipe_name, 0777);
+	mkfifo(out_pipe_name, 0777);
 	printf("%d: MADE MY PIPES!\n",nodeinfo.address);
 	
-	int outFD = open(out_pipe_name, O_NONBLOCK | O_RDWR);
+	outFD = open(out_pipe_name, O_NONBLOCK | O_RDWR);
 	//TODO if I do NONBLOCK the whole these fdopens return NULL
 	//in_pipe = fdopen(inFD,"r");
-	out_pipe = fdopen(outFD,"w");
+	out_pipe = fdopen(outFD,"w+");
 	
 	/*
 	if(in_pipe != NULL && out_pipe != NULL)
@@ -160,8 +251,10 @@ EVENT_HANDLER(reboot_node)
 		exit(0);
 	*/
 
-	fprintf(out_pipe,"Hi, I am node %d\n",nodeinfo.address);
-	fprintf(out_pipe,"and I like to party\n");
+	char* message = "Hi, I am a node\n";
+	write(outFD,message,strlen(message));
+	//fprintf(out_pipe,"Hi, I am node %d\n",nodeinfo.address);
+	//fprintf(out_pipe,"and I like to party\n");
 	printf("%d: wrote to pipe!\n",nodeinfo.address);
 	
 	pid_t child_pid;
@@ -172,11 +265,12 @@ EVENT_HANDLER(reboot_node)
 	}
 	if(child_pid == 0)
 	{
-		execl("/usr/bin/python","/usr/bin/python","cnet_network.py", out_pipe_name, in_pipe_name, (char*)0);
+		printf("%d: Starting python dsr \n",nodeinfo.address);
+		execl("/home/uniwa/students/students7/20515347/linux/python3/bin/python3","/home/uniwa/students/students7/20515347/linux/python3/bin/python3","cnet_network.py", out_pipe_name, in_pipe_name, (char*)0);
 	}
-	fclose(out_pipe);
+	//fclose(out_pipe);
 	
-	int inFD = open(in_pipe_name, O_NONBLOCK | O_RDWR);
+	inFD = open(in_pipe_name, O_NONBLOCK | O_RDWR);
 	if(inFD < 0)
 		printf("Couldn't open in_pipe\n");
 	char buf[100];
@@ -201,6 +295,7 @@ EVENT_HANDLER(reboot_node)
 	link_init();
 	net_init();
 	walking_init();
+	CHECK(CNET_set_handler(EV_SHUTDOWN, shutdown, 0));
 	CHECK(CNET_enable_application(ALLNODES));
 	printf("%d: Reboot complete\n",nodeinfo.address);
 }
