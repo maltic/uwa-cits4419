@@ -92,6 +92,9 @@ class DSR:
     # we should probably be expiring old entries from the bellow buffer
     self.__seen_route_requests = set()
     self.__already_received_msgs = set()
+    
+  def __debug_print(self, contents):
+    print(contents)
 
   #Generate a DSR packet
   def __make_packet(self, type, path, contents):
@@ -125,7 +128,7 @@ class DSR:
     pkt.fromID = -1
     pkt.toID = -1
     self.__outbox.append((str(pkt), -1))
-    #print("Broadcasting Packet {}".format(pkt))
+    #self.__debug_print("Broadcasting Packet {}".format(pkt))
     return
 
   #Send a packet to a given destination
@@ -133,7 +136,7 @@ class DSR:
     pkt.fromID = self.ID
     pkt.toID = toID
     self.__outbox.append((str(pkt), toID))
-    print("Sending Packet of Type {} To {}  {}".format(pkt.type, toID, pkt))
+    self.__debug_print("Sending Packet of Type {} To {}  {}".format(pkt.type, toID, pkt))
     return
 
   #-----------------------------------------------------------
@@ -143,16 +146,15 @@ class DSR:
   #funtction to discover a route the destination.
   def __route_request(self, msg):
   
-    if msg.brokenLink != None:
-      self.__route_cache.remove_link(msg.brokenLink[0], msg.brokenLink[1])
+    self.__route_cache.remove_link(msg.brokenLink[0], msg.brokenLink[1])
     
     rr_ident = (msg.path[0], msg.originatorID) #identifier of rreq
-    #print("Route request for ID {} with path {}".format(msg.contents, msg.path))
+    #self.__debug_print("Route request for ID {} with path {}".format(msg.contents, msg.path))
     if int(msg.contents) == self.ID:
       msg.path.append(str(self.ID))
       rev_path = list(reversed(msg.path))
       self.__network_sendto(self.__make_packet_o(DSRMessageType.REPLY, rev_path, msg.path[0], msg.originatorID, msg.originatorNodeID), int(rev_path[1]))
-      #print("Sending route reply to {} via path {}".format(msg.path[0], rev_path))
+      #self.__debug_print("Sending route reply to {} via path {}".format(msg.path[0], rev_path))
     elif self.ID in [int(value) for value in msg.path] or rr_ident in self.__seen_route_requests :
       #avoid cyclic requests, and already seen requests
       pass
@@ -161,12 +163,11 @@ class DSR:
       self.__seen_route_requests.add(rr_ident)
       #NOTE: Could add a route cache lookup here
       msg.path.append(str(self.ID))
-      #print("Route request: Appending myself to path {}".format(msg.path))
+      #self.__debug_print("Route request: Appending myself to path {}".format(msg.path))
       #self.__network_broadcast(self.__make_packet_o(DSRMessageType.REQUEST, msg.path, msg.contents, msg.originatorID))
       pkt = self.__make_packet_o(DSRMessageType.REQUEST, msg.path, msg.contents, msg.originatorID,msg.originatorNodeID)
-      if msg.brokenLink != None:
-        pkt.brokenLink = msg.brokenLink
-      #print("Route request: Appending myself to path {}".format(msg.path))
+      pkt.brokenLink = msg.brokenLink
+      #self.__debug_print("Route request: Appending myself to path {}".format(msg.path))
       self.__network_broadcast(pkt)
       
       
@@ -179,13 +180,13 @@ class DSR:
     
     rr_ident = (msg.path[0], msg.originatorID) #identifier of rreq
     
-    #print("Route request for ID {} with path {}".format(msg.contents, msg.path))
+    #self.__debug_print("Route request for ID {} with path {}".format(msg.contents, msg.path))
     if int(msg.contents) == self.ID:
-      print("successful route req with error")
+      self.__debug_print("successful route req with error")
       msg.path.append(str(self.ID))
       rev_path = list(reversed(msg.path))
       self.__network_sendto(self.__make_packet_o(DSRMessageType.REPLY, rev_path, msg.path[0], msg.originatorID,msg.originatorNodeID), int(rev_path[1]))
-      #print("Sending route reply to {} via path {}".format(msg.path[0], rev_path))
+      #self.__debug_print("Sending route reply to {} via path {}".format(msg.path[0], rev_path))
     elif self.ID in [int(value) for value in msg.path] or rr_ident in self.__seen_route_requests :
        #avoid cyclic requests, and already seen requests
       pass
@@ -196,7 +197,7 @@ class DSR:
       msg.path.append(str(self.ID))
       pkt = self.__make_packet_o(DSRMessageType.ERRREQ, msg.path, msg.contents, msg.originatorID,msg.originatorNodeID)
       pkt.brokenLink = msg.brokenLink
-      #print("Route request: Appending myself to path {}".format(msg.path))
+      #self.__debug_print("Route request: Appending myself to path {}".format(msg.path))
       self.__network_broadcast(pkt)
 
   #-----------------------------------------------------------
@@ -208,12 +209,14 @@ class DSR:
   def __route_reply(self, msg):
     #if i am the originator of the message then remove it from the send buffer
     #if not, then send it to the next guy on the list
-    #print("Route reply for {} with path {}".format(msg.contents, msg.path))
+    #self.__debug_print("Route reply for {} with path {}".format(msg.contents, msg.path))
     if int(msg.contents) == self.ID:
-      #print("This reply is for me from {}".format(msg.path[0]))
+      #self.__debug_print("This reply is for me from {}".format(msg.path[0]))
       rev_path = list(reversed(msg.path))
       next_index = 1
       contents = self.__remove_from_send_buffer(msg.originatorID)
+      
+      self.__debug_print("Route reply contents: {}".format(contents))
       
       #skip messages we already sent
       if contents == None:
@@ -223,12 +226,12 @@ class DSR:
       self.__add_to_ack_buffer(pkt) #expect acknowledgement for send
       
       self.__network_sendto(pkt, int(rev_path[next_index]))
-      #print("Sending message {} to {} via path {}".format(contents, rev_path[next_index], rev_path))
+      #self.__debug_print("Sending message {} to {} via path {}".format(contents, rev_path[next_index], rev_path))
     else:
       intpath = [int(value) for value in msg.path]
       next_index = intpath.index(self.ID)+1
       self.__network_sendto(self.__make_packet_o(DSRMessageType.REPLY, msg.path, msg.contents, msg.originatorID,msg.originatorNodeID), int(msg.path[next_index]))
-      #print("This is not my route reply. Forwarding to {}".format(msg.path[next_index]))
+      #self.__debug_print("This is not my route reply. Forwarding to {}".format(msg.path[next_index]))
       
 
 
@@ -246,7 +249,7 @@ class DSR:
       #NOTE: need to make sure we dont re-add messages we already received
       if (msg.originatorID, msg.originatorNodeID) in self.__already_received_msgs:
         return
-      self.__already_seen_msgs.add((msg.originatorID, msg.originatorNodeID))
+      self.__already_received_msgs.add((msg.originatorID, msg.originatorNodeID))
       self.__done_buffer.append(msg)
     else:
       intpath = [int(value) for value in msg.path]
@@ -259,13 +262,13 @@ class DSR:
   #-----------------------------------------------------------
   #                DSR - ROUTE DISCOVERY
   #-----------------------------------------------------------
-  def __route_discover(self, msg, toID):
+  def __route_discover(self, data, toID):
   
     #first attempt to use route cache
     cached_path = self.__route_cache.get_shortest_path(toID)
     if cached_path:
-      print("Found path to {} using route cache... {}".format(toID, cached_path))
-      pkt = self.__make_packet(DSRMessageType.SEND, cached_path, msg)
+      self.__debug_print("Found path to {} using route cache... {}".format(toID, cached_path))
+      pkt = self.__make_packet(DSRMessageType.SEND, cached_path, data)
       self.__network_sendto(pkt, int(cached_path[1]))
       self.__add_to_ack_buffer(pkt) #expect acknowledgement for send
     else:
@@ -274,21 +277,21 @@ class DSR:
       start = time.time()
       #add too send buffer
       #this ensures that we re-broadcast rreqs that are taking too long
-      self.__send_buffer.append((temp, start, 1))
+      self.__send_buffer.append((data, temp, start, 1))
       self.__network_broadcast(temp)
     
     
   #-----------------------------------------------------------
   #        DSR - ROUTE DISCOVERY WITH ERROR PROPAGATION
   #-----------------------------------------------------------
-  def __route_discover_with_error(self, msg, brokenLink):
-    print("route discovery with error")
+  def __route_discover_with_error(self, originalPkt, brokenLink):
+    self.__debug_print("route discovery with error")
     #remove broken link from cache
     self.__route_cache.remove_link(brokenLink[0], brokenLink[1])
     #start route discovery
-    temp = self.__make_packet(DSRMessageType.REQUEST, [self.ID], msg.toID)
-    temp.originatorID = msg.originatorID
-    temp.originatorNodeID = msg.originatorNodeID
+    temp = self.__make_packet(DSRMessageType.REQUEST, [self.ID], originalPkt.toID)
+    temp.originatorID = originalPkt.originatorID
+    temp.originatorNodeID = originalPkt.originatorNodeID
     
     #propagate the broken link
     #so that others can remove it from their route cache
@@ -297,7 +300,7 @@ class DSR:
     start = time.time()
     #add too send buffer
     #this ensures that we re-broadcast rreqs that are taking too long
-    self.__send_buffer.append((msg, start, 1))
+    self.__send_buffer.append((originalPkt.contents, originalPkt, start, 1))
     self.__network_broadcast(temp)
 
 
@@ -307,7 +310,7 @@ class DSR:
   def __msg_acknowledgement(self, msg):
     for ack in self.__awaiting_acknowledgement_buffer:
       if int(ack[0].id) == int(msg.contents):
-        print("Acknowledging packet {} in response to {}".format(ack[0], msg))
+        self.__debug_print("Acknowledging packet {} in response to {}".format(ack[0], msg))
         self.__awaiting_acknowledgement_buffer.remove(ack)
         return
 
@@ -317,7 +320,7 @@ class DSR:
   #Append the message to the send queue
   def send_message(self, contents, toID):
     self.__send_queue.append((contents, toID))
-    print("DSR sending message '" + str(contents) + "'")
+    self.__debug_print("DSR sending message '" + str(contents) + "'")
 
   #-----------------------------------------------------------
   #                 DSR - RECEIVING
@@ -335,7 +338,7 @@ class DSR:
       return
         
     self.__receive_queue.append(a)
-    print(' ---NET--- {} Packet Received! {}'.format(self.ID, pkt))
+    self.__debug_print(' ---NET--- {} Packet Received! {}'.format(self.ID, pkt))
 
   #pops all the messages this dsr node has received
   #and which were destined for it
@@ -345,17 +348,16 @@ class DSR:
     return tmp
 
   def pop_outbox(self):
-    #print("testing2 ", self.__outbox)
+    #self.__debug_print("testing2 ", self.__outbox)
     tmp = self.__outbox
     self.__outbox = []
     return tmp
 
   def __remove_from_send_buffer(self, ID):
     for send in self.__send_buffer:
-      if send[0].originatorID == ID:
-        msg = send[0].contents
+      if send[1].originatorID == ID:
         self.__send_buffer.remove(send)
-        return msg
+        return send[0] #return the data associated with that route request
     return None
 
   #-----------------------------------------------------------
@@ -364,12 +366,12 @@ class DSR:
   # eventually will restart a route request, and propagate the broken link
   #-----------------------------------------------------------
   def __check_ack_buffer(self):
-    print("Checking ack buffer")
-    print(self.__awaiting_acknowledgement_buffer)
+    self.__debug_print("Checking ack buffer")
+    self.__debug_print(self.__awaiting_acknowledgement_buffer)
     toAdd = []
     for ack in self.__awaiting_acknowledgement_buffer:
       if ack[2] > MAX_transmissions:
-        print ("Giving up {}!".format(ack))
+        self.__debug_print ("Giving up {}!".format(ack))
         intpath = [int(value) for value in ack[0].path]
         next_index = intpath.index(self.ID)+1
         unreachable_node = ack[0].path[next_index]
@@ -394,7 +396,7 @@ class DSR:
           intpath = [int(value) for value in ack[0].path]
           next_index = intpath.index(self.ID)+1
           self.__network_sendto(msg, int(msg.path[next_index]))
-          print("-----Elapsed: {}.   Retransmitting {}, resend {} times".format(elapsed, msg, ack[2]))
+          self.__debug_print("-----Elapsed: {}.   Retransmitting {}, resend {} times".format(elapsed, msg, ack[2]))
           #remove old record
           self.__awaiting_acknowledgement_buffer.remove(ack)
           #add to buffer again with updated transmissions
@@ -411,22 +413,23 @@ class DSR:
         return
     start = time.time()
     self.__awaiting_acknowledgement_buffer.append((pkt,start,1))
-    print("Adding to ack: {}".format(pkt))
-    #print("Add pkt with originator ID {} to ack".format(pkt.originatorID))
+    self.__debug_print("Adding to ack: {}".format(pkt))
+    #self.__debug_print("Add pkt with originator ID {} to ack".format(pkt.originatorID))
 
   def __check_send_buffer(self):
     for send in self.__send_buffer:
       end = time.time()
-      elapsed = end - int(send[1])
-      if elapsed > MAX_time_between_request*send[2]:
-        print("Re route requesting for {}".format(send[0]))
-        #NOTE: we still need to resend the packet..?!
+      elapsed = end - int(send[2])
+      if elapsed > MAX_time_between_request*send[3]:
+        self.__debug_print("Re route requesting for packet {}".format(send[1]))
+        #recalculated counters and time
         start = time.time()
-        counter = int(send[2])+1
-        msg = send[0]
+        counter = int(send[3])+1
+        contents = send[0]
+        #reinsert the packet into the send buffer and re-broadcast it
         self.__send_buffer.remove(send)
-        self.__send_buffer.append((msg, start, counter))
-        self.__network_broadcast(msg)
+        self.__send_buffer.append((send[0], send[1], start, counter))
+        self.__network_broadcast(send[1])
 
   #-----------------------------------------------------------
   #                     UPDATE
@@ -441,16 +444,14 @@ class DSR:
         continue
       if msg.type == DSRMessageType.REQUEST:
         self.__route_request(msg)
-      elif msg.type == DSRMessageType.ERRREQ:
-        self.__route_request_with_error(msg)
       elif msg.type == DSRMessageType.REPLY:
         self.__route_reply(msg)
-      elif msg.type == DSRMessageType.ERROR: #currently not used
-        self.__route_error(msg)
       elif msg.type == DSRMessageType.SEND:
         self.__route_send(msg)
       elif msg.type == DSRMessageType.ACK:
         self.__msg_acknowledgement(msg)
+      else:
+        self.__debug_print("!!!!!!!! UNEXPECTED PACKET TYPE")
     for send in self.__send_queue:
       self.__route_discover(send[0], send[1])
     self.__receive_queue = []
