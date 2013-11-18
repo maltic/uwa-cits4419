@@ -68,7 +68,7 @@ import route_cache
 from dsr_packet import DSRMessageType, Packet
 
 MAX_transmissions = 3
-MAX_time_between_ack = 1
+MAX_time_between_ack = 0.5
 MAX_time_between_request = 1
 
 #DSR Routing Algorithm
@@ -100,17 +100,19 @@ class DSR:
     pkt.contents = contents
     pkt.id = self.next_packet_id
     pkt.originatorID = pkt.id
+    pkt.originatorNodeID = self.ID
     self.next_packet_id += 1
     return pkt
 
   #Generate a DSR packet
-  def __make_packet_o(self, type, path, contents, originator):
+  def __make_packet_o(self, type, path, contents, originator, origantorNode):
     pkt = Packet()
     pkt.type = type
     pkt.path = path
     pkt.contents = contents
     pkt.id = self.next_packet_id
     pkt.originatorID = originator
+    pkt.originatorNodeID = origantorNode
     self.next_packet_id += 1
     return pkt
 
@@ -130,7 +132,7 @@ class DSR:
     pkt.fromID = self.ID
     pkt.toID = toID
     self.__outbox.append((str(pkt), toID))
-    #print("Sending Packet of Type {} To {}  {}".format(pkt.type, toID, pkt))
+    print("Sending Packet of Type {} To {}  {}".format(pkt.type, toID, pkt))
     return
 
   #-----------------------------------------------------------
@@ -140,12 +142,15 @@ class DSR:
   #funtction to discover a route the destination.
   def __route_request(self, msg):
   
+    if msg.brokenLink != None:
+      self.__route_cache.remove_link(msg.brokenLink[0], msg.brokenLink[1])
+    
     rr_ident = (msg.path[0], msg.originatorID) #identifier of rreq
     #print("Route request for ID {} with path {}".format(msg.contents, msg.path))
     if int(msg.contents) == self.ID:
       msg.path.append(str(self.ID))
       rev_path = list(reversed(msg.path))
-      self.__network_sendto(self.__make_packet_o(DSRMessageType.REPLY, rev_path, msg.path[0], msg.originatorID), int(rev_path[1]))
+      self.__network_sendto(self.__make_packet_o(DSRMessageType.REPLY, rev_path, msg.path[0], msg.originatorID, msg.originatorNodeID), int(rev_path[1]))
       #print("Sending route reply to {} via path {}".format(msg.path[0], rev_path))
     elif self.ID in [int(value) for value in msg.path] or rr_ident in self.__seen_route_requests :
       #avoid cyclic requests, and already seen requests
@@ -156,7 +161,12 @@ class DSR:
       #NOTE: Could add a route cache lookup here
       msg.path.append(str(self.ID))
       #print("Route request: Appending myself to path {}".format(msg.path))
-      self.__network_broadcast(self.__make_packet_o(DSRMessageType.REQUEST, msg.path, msg.contents, msg.originatorID))
+      #self.__network_broadcast(self.__make_packet_o(DSRMessageType.REQUEST, msg.path, msg.contents, msg.originatorID))
+      pkt = self.__make_packet_o(DSRMessageType.REQUEST, msg.path, msg.contents, msg.originatorID,msg.originatorNodeID)
+      if msg.brokenLink != None:
+        pkt.brokenLink = msg.brokenLink
+      #print("Route request: Appending myself to path {}".format(msg.path))
+      self.__network_broadcast(pkt)
       
       
   #-----------------------------------------------------------
@@ -173,7 +183,7 @@ class DSR:
       print("successful route req with error")
       msg.path.append(str(self.ID))
       rev_path = list(reversed(msg.path))
-      self.__network_sendto(self.__make_packet_o(DSRMessageType.REPLY, rev_path, msg.path[0], msg.originatorID), int(rev_path[1]))
+      self.__network_sendto(self.__make_packet_o(DSRMessageType.REPLY, rev_path, msg.path[0], msg.originatorID,msg.originatorNodeID), int(rev_path[1]))
       #print("Sending route reply to {} via path {}".format(msg.path[0], rev_path))
     elif self.ID in [int(value) for value in msg.path] or rr_ident in self.__seen_route_requests :
        #avoid cyclic requests, and already seen requests
@@ -183,7 +193,7 @@ class DSR:
       self.__seen_route_requests.add(rr_ident)
       
       msg.path.append(str(self.ID))
-      pkt = self.__make_packet_o(DSRMessageType.ERRREQ, msg.path, msg.contents, msg.originatorID)
+      pkt = self.__make_packet_o(DSRMessageType.ERRREQ, msg.path, msg.contents, msg.originatorID,msg.originatorNodeID)
       pkt.brokenLink = msg.brokenLink
       #print("Route request: Appending myself to path {}".format(msg.path))
       self.__network_broadcast(pkt)
@@ -209,7 +219,6 @@ class DSR:
         return
         
       pkt = self.__make_packet(DSRMessageType.SEND, rev_path, contents)
-      
       self.__add_to_ack_buffer(pkt) #expect acknowledgement for send
       
       self.__network_sendto(pkt, int(rev_path[next_index]))
@@ -217,7 +226,7 @@ class DSR:
     else:
       intpath = [int(value) for value in msg.path]
       next_index = intpath.index(self.ID)+1
-      self.__network_sendto(self.__make_packet_o(DSRMessageType.REPLY, msg.path, msg.contents, msg.originatorID), int(msg.path[next_index]))
+      self.__network_sendto(self.__make_packet_o(DSRMessageType.REPLY, msg.path, msg.contents, msg.originatorID,msg.originatorNodeID), int(msg.path[next_index]))
       #print("This is not my route reply. Forwarding to {}".format(msg.path[next_index]))
       
 
@@ -238,7 +247,7 @@ class DSR:
     else:
       intpath = [int(value) for value in msg.path]
       next_index = intpath.index(self.ID)+1
-      pkt = self.__make_packet(DSRMessageType.SEND, msg.path, msg.contents)
+      pkt = self.__make_packet_o(DSRMessageType.SEND, msg.path, msg.contents, msg.originatorID,msg.originatorNodeID)
       self.__add_to_ack_buffer(pkt) #expect acknowledgement for send
       self.__network_sendto(pkt, int(msg.path[next_index]))
     #need to start route discovery if a link is broken
@@ -261,19 +270,21 @@ class DSR:
       start = time.time()
       #add too send buffer
       #this ensures that we re-broadcast rreqs that are taking too long
-      self.__send_buffer.append((msg, temp.originatorID, start, 1))
+      self.__send_buffer.append((temp, start, 1))
       self.__network_broadcast(temp)
     
     
   #-----------------------------------------------------------
   #        DSR - ROUTE DISCOVERY WITH ERROR PROPAGATION
   #-----------------------------------------------------------
-  def __route_discover_with_error(self, msg, toID, brokenLink):
+  def __route_discover_with_error(self, msg, brokenLink):
     print("route discovery with error")
     #remove broken link from cache
     self.__route_cache.remove_link(brokenLink[0], brokenLink[1])
     #start route discovery
-    temp = self.__make_packet(DSRMessageType.ERRREQ, [self.ID], toID)
+    temp = self.__make_packet(DSRMessageType.REQUEST, [self.ID], msg.toID)
+    temp.originatorID = msg.originatorID
+    temp.originatorNodeID = msg.originatorNodeID
     
     #propagate the broken link
     #so that others can remove it from their route cache
@@ -282,7 +293,7 @@ class DSR:
     start = time.time()
     #add too send buffer
     #this ensures that we re-broadcast rreqs that are taking too long
-    self.__send_buffer.append((msg, temp.originatorID, start, 1))
+    self.__send_buffer.append((msg, start, 1))
     self.__network_broadcast(temp)
 
 
@@ -337,8 +348,8 @@ class DSR:
 
   def __remove_from_send_buffer(self, ID):
     for send in self.__send_buffer:
-      if send[1] == ID:
-        msg = send[0]
+      if send[0].originatorID == ID:
+        msg = send[0].contents
         self.__send_buffer.remove(send)
         return msg
     return None
@@ -363,7 +374,7 @@ class DSR:
         #self.__network_broadcast(self.__make_packet(DSRMessageType.ERROR, [self.ID],  unreachable_node))
         
         #do a route discovery with error propagation
-        self.__route_discover_with_error(ack[0].contents, ack[0].toID, (self.ID, int(unreachable_node)))
+        self.__route_discover_with_error(ack[0], (self.ID, int(unreachable_node)))
         #NOTE: this currently causes a bug
         #if the message does eventually get send, but we assume it was an error
         #then there is a problem, because we may correctly send the same message twice
@@ -402,16 +413,16 @@ class DSR:
   def __check_send_buffer(self):
     for send in self.__send_buffer:
       end = time.time()
-      elapsed = end - int(send[2])
-      if elapsed > MAX_time_between_request*send[3]:
-        print("Re route requesting")
+      elapsed = end - int(send[1])
+      if elapsed > MAX_time_between_request*send[2]:
+        print("Re route requesting for {}".format(send[0]))
         #NOTE: we still need to resend the packet..?!
         start = time.time()
-        counter = int(send[3])+1
+        counter = int(send[2])+1
         msg = send[0]
-        originatorID = send[1]
         self.__send_buffer.remove(send)
-        self.__send_buffer.append((msg, originatorID, start, counter))
+        self.__send_buffer.append((msg, start, counter))
+        self.__network_broadcast(msg)
 
   #-----------------------------------------------------------
   #                     UPDATE
