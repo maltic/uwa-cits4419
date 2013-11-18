@@ -80,12 +80,13 @@ class Packet:
     self.id = -1              #DSR packet sequence ID
     self.fromID = -1          #sender's node ID
     self.originatorID = -1    #source packet ID (the ID of the very first packet from the originator)
+    self.originatorNodeID = -1
     self.toID = -1            #receiver's node ID
-    self.brokenLink = (-1, -1)#the broken link for an ERRREQ message
+    self.brokenLink = None #the broken link for an ERRREQ message
 
   #prints out information of this packet
   def __str__(self):
-    out = [self.type, ">".join(str(x) for x in self.path), self.contents, self.id, self.fromID, self.originatorID, self.toID, self.brokenLink]
+    out = [self.type, ">".join(str(x) for x in self.path), self.contents, self.id, self.fromID, self.originatorID, self.toID, self.brokenLink, self.originatorNodeID]
     return "|".join(str(x) for x in out)
 
   def __repr__(self):
@@ -104,4 +105,5 @@ class Packet:
     pkt.originatorID = int(toks[5])
     pkt.toID = int(toks[6])
     pkt.brokenLink = make_tuple(toks[7])
+    pkt.originatorNodeID = int(toks[8])
     return pkt
