@@ -90,7 +90,8 @@ class DSR:
     self.__route_cache = route_cache.RouteCache(self.ID)
     # set of route reqs which have already been seen
     # we should probably be expiring old entries from the bellow buffer
-    self.__seen_route_requests = set() 
+    self.__seen_route_requests = set()
+    self.__already_received_msgs = set()
 
   #Generate a DSR packet
   def __make_packet(self, type, path, contents):
@@ -243,6 +244,9 @@ class DSR:
 
     if int(msg.path[-1]) == self.ID:
       #NOTE: need to make sure we dont re-add messages we already received
+      if (msg.originatorID, msg.originatorNodeID) in self.__already_received_msgs:
+        return
+      self.__already_seen_msgs.add((msg.originatorID, msg.originatorNodeID))
       self.__done_buffer.append(msg)
     else:
       intpath = [int(value) for value in msg.path]
