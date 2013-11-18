@@ -7,14 +7,15 @@
 cd ~/Deployment
 rm dsr.zip
 
-wget "http://10.1.1.200/dsr.zip"\
-        && cd ~/DSR
-        && ./stop.sh\
-        && rm -rf ~/DSR\
-        && mkdir ~/DSR\
-        && unzip dsr.zip -d ~/DSR\
-        && chmod +x ~/DSR/stop.sh\
-        && chmod +x ~/DSR/start.sh\
+wget "http://10.1.1.200/dsr.zip"
+cd ~/DSR
+./stop.sh
+cd ~/Deployment
+rm -rf ~/DSR
+mkdir ~/DSR
+unzip dsr.zip -d ~/DSR
+chmod +x ~/DSR/stop.sh
+chmod +x ~/DSR/start.sh
 
-cd ~/DSR\
-&& ./start.sh >~/DSRlog/`date`.log 2>&1 &
+cd ~/DSR
+./start.sh >~/DSRlog/`date "+%s"`.log 2>&1 &
