@@ -55,7 +55,6 @@
 #===============================================================================
 
 
-from ast import literal_eval as make_tuple
 
 #-----------------------------------------------------------
 #                     MESSAGE TYPE
@@ -85,7 +84,7 @@ class Packet:
 
   #prints out information of this packet
   def __str__(self):
-    out = [self.type, ">".join(str(x) for x in self.path), self.contents, self.id, self.fromID, self.originatorID, self.toID, self.brokenLink]
+    out = [self.type, ">".join(str(x) for x in self.path), self.contents, self.id, self.fromID, self.originatorID, self.toID, ">".join(str(x) for x in self.brokenLink)]
     return "|".join(str(x) for x in out)
 
   def __repr__(self):
@@ -103,5 +102,5 @@ class Packet:
     pkt.fromID = int(toks[4])
     pkt.originatorID = int(toks[5])
     pkt.toID = int(toks[6])
-    pkt.brokenLink = make_tuple(toks[7])
+    pkt.brokenLink = tuple(toks[7].split(">"))
     return pkt

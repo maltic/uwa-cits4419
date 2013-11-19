@@ -33,11 +33,11 @@ def send():
   fwd = my_dsr.pop_outbox()
   #write messages to pipe
   for msg in rec:
-    tosend = "MSG." + msg+"\0"
+    tosend = "MSG." + msg.contents + "\0"
     os.write(outfd,tosend.encode(char_encoding))
   for pkt in fwd:
-    tmpfile.write("FORWARDING A MESSAGE: " + str(pkt) + "\n")
-    tosend = "FWD." + str(pkt)+"\0"
+    tmpfile.write("FORWARDING A MESSAGE: " + str(pkt[0]) + "\n")
+    tosend = "FWD." + str(pkt[0])+"\0"
     os.write(outfd,tosend.encode(char_encoding))
 
 
@@ -53,7 +53,7 @@ def receive():
       my_dsr.send_message(tokens[1],int(tokens[2]))
     elif(tokens[0] == "PKT"):
       tmpfile.write("that was a packet\n")
-      my_dsr.receive_packet(Packet.from_str(tokens[1]))
+      my_dsr.receive_packet(tokens[1])
     else:
       tmpfile.write("that was something weird\n")
   if(message == "shutdown"):
@@ -61,19 +61,21 @@ def receive():
   
 
 def read_from_pipe(pipefd):
+  #TODO buffer all the bytes before encoding and decoding
   #tmpfile.write("READING\n")
   next_char = ''
-  msg = ""
+  msg = []
   while(next_char != "\n"):
     #tmpfile.write(next_char)
-    msg = msg + next_char
+    
     try:
       next_byte = os.read(pipefd,1)
+      msg.extend(next_byte)
       next_char = next_byte.decode(char_encoding)
     except OSError as e:
       #tmpfile.write(e.strerror + "\n")
-      return msg     
-  return msg
+      break       
+  return bytearray(msg).decode(char_encoding)
 
 if __name__ == "__main__":
   
