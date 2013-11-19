@@ -404,6 +404,7 @@ class DSR:
     self.__check_ack_buffer()
     self.__check_send_buffer()
     for msg in self.__receive_queue:
+      self.__debug_print(str(self.__route_cache.get_edge_list()))
       #avoid self self messages
       if msg.fromID == self.ID:
         continue

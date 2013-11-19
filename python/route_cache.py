@@ -75,6 +75,9 @@ class RouteCache:
     self.__me = myID
     #maximum age of a link in milliseconds
     self.__MAX_DELTA = 1000000
+    
+  def get_edge_list(self):
+    return self.__edge_list
 
   #-----------------------------------------------------------
   #                           ADD
