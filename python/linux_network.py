@@ -3,31 +3,8 @@ import dsr
 import socket
 import threading
 import time
+from dsr_packet import Packet
 
-
-#Sub-class the UDP server and enable threading
-#class ServerThreaded(socketserver.ForkingMixIn, socketserver.UDPServer):
-#	pass
-
-#Subclass the base handler and add our functionality.
-#class ReceiveHandler(socketserver.BaseRequestHandler):
-#	
-#	def handle(self):
-#		data = self.request[0].strip()
-#		pkt = CustPacket.CustPacket(data)
-#		
-#		#extract out DSR string
-#		dsr_data = pkt.udp_data
-#		
-#		global input_buffer
-#		
-#		input_buffer.append(dsr_data)
-#
-#		print("recieved something!!")
-#
-#end def
-
-#end class
 
 class Network:
 	def __init__(self, ip_address, dsr_port) :
@@ -49,11 +26,6 @@ class Network:
 
 		self.server_thread = threading.Thread(target=self.serve_socket)
 		self.server_thread.start()
-	
-#		server = ServerThreaded((ip_address, dsr_port), ReceiveHandler)
-#		ip, port  = server.server_address
-#		server_thread = threading.Thread(target=server.serve_forever)
-#		server_thread.start()
 
 	def receive(self) :
 		ret = self.input_buffer
@@ -62,14 +34,10 @@ class Network:
 
 	def send(self, msg, addr) :
 		if addr == -1 :
-		#			dst_addr = self.net_prefix + "255"
 			dst_addr = "255.255.255.255"
 		else :
 			dst_addr = self.net_prefix + str(addr)
 
-		#pkt = IP(dst=dst_addr)/UDP(dport=self.dsr_port, sport=RandNum(1024,65535))/msg
-
-		#send(pkt)
 		print("NET: sending '" + str(msg) + "' to " + str(dst_addr))
 		
 		
@@ -89,53 +57,77 @@ class Network:
 			
 			if address[0] != self.ip_address:
 					self.input_buffer.append(message.decode(encoding="UTF-8"))
-#main loop
 
+
+def run_background_updates(dsr, network):
+
+	while True:
+		#send messages on the network that are waiting in the outbox
+		dsrOutbox = dsr.pop_outbox()
+
+		for o in dsrOutbox:
+			network.send(o[0], o[1])
+
+		#run an update cycle
+		dsr.update()
+
+		#recieve messages from the network input buffer
+		networkInput = network.receive()
+	
+		if networkInput != []:
+			#give them to dsr to process
+			for m in networkInput:
+				dsr.receive_packet(m)
+
+		#run an update cycle
+		dsr.update()
+		
+		#see if we have any messages for the user.
+		inbox = dsr.pop_inbox()
+
+		#print to the console
+		if inbox != []:
+			#print("APP: Got Message: " + str(inbox))
+			for pkt in inbox:
+				app_msg = str(pkt.contents)
+				msg_parts = app_msg.split("#")
+				
+				print(msg_parts[0] + "> " + msg_parts[1] + "\n")
+
+#main loop
 arg_address = sys.argv[1]
-node_id = arg_address[-1:]
+
+#get the last octet of the IP address supplied
+tokens = arg_address.split(".")
+node_id = tokens[3]
 
 dsr = dsr.DSR(int(node_id))
 
 network = Network(arg_address, 1069)
 
+
+background_thread = threading.Thread(target=run_background_updates, args=(dsr, network))
+background_thread.start()
+
+user_name = input("Please set your name: ")
+
 while True:
 	
-	user_msg = "hello from " + str(node_id)
+	print("\n-----------------------------------")
+	print("\n          Application              ")
+	print("\n-----------------------------------")
+	user_msg = input("\nEnter message: ")
+	user_dst = input("\nEnter destination id: ")
+	print("\n-----------------------------------")
 	
-	if node_id == "1":
-		user_dst = 2
-	else:
-		user_dst = 1
+	app_msg = user_name + "#" + user_msg
 	
-	print("Sending message '" + user_msg + "' to dst: " + str(user_dst))
+	dsr.send_message(app_msg, user_dst)
 
-	dsr.send_message(user_msg, user_dst)
 
-	dsr.update()
-	dsr.update()
-	dsr.update()
 
-	dsrOutbox = dsr.pop_outbox()
 
-	if dsrOutbox != []:
-		print("DSR Outbox: " + str(dsrOutbox))
 
-	for o in dsrOutbox:
-		network.send(o[0], o[1])
-
-	networkInput = network.receive()
-
-	if networkInput != []:
-				
-		for m in networkInput:
-			print("Received Message: '" + str(m) + "'")
-			dsr.receive_packet(m)
-
-	dsr.update()
-	dsr.update()
-	dsr.update()
-
-	time.sleep(4)
 
 
 
