@@ -83,7 +83,7 @@ class Packet:
 
   #prints out information of this packet
   def __str__(self):
-    out = [self.type, ">".join(str(x) for x in self.path), self.contents, self.id, self.fromID, self.originatorID, self.toID, str(self.brokenLink[0])+">"+str(self.brokenLink[1]), self.originatorNodeID]
+    out = [self.type, ">".join(str(x) for x in self.path), self.contents, self.id, self.fromID, self.originatorID, self.toID, ">".join(str(x) for x in self.brokenLink), self.originatorNodeID]
     return "|".join(str(x) for x in out)
 
   def __repr__(self):
