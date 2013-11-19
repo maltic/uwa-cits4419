@@ -20,7 +20,6 @@ typedef struct
 
 typedef struct
 {
-	int hops;
 	int len;
 	CnetAddr dest; //this is just an integer
 } MSGHEADER;
