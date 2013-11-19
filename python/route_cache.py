@@ -110,19 +110,6 @@ class RouteCache:
   #               FINDING THE SHORTEST PATH
   #-----------------------------------------------------------
   def get_shortest_path(self, toID):
-    #expire old links
-    currT = millis()
-    r = [] # things to delete
-    for fromID in self.__edge_age.keys():
-      for tID in self.__edge_age[fromID].keys():
-        age = currT - self.__edge_age[fromID][tID]
-        if age > self.__MAX_DELTA:
-          r.append((fromID, tID))
-          
-    for a, b in r:
-      del self.__edge_age[a][b]
-      self.__edge_list[a].discard(b)
-
     #perform a simple bfs to find the SSSP
     q = []
     q.append(self.__me)
