@@ -61,9 +61,7 @@
 #===============================================================================
 
 
-import simulator_network
 import time
-import ast
 import route_cache
 from dsr_packet import DSRMessageType, Packet
 
@@ -170,36 +168,6 @@ class DSR:
       #self.__debug_print("Route request: Appending myself to path {}".format(msg.path))
       self.__network_broadcast(pkt)
       
-      
-  #-----------------------------------------------------------
-  #          DSR - ROUTE REQUEST WITH ERROR PROPAGATION
-  #-----------------------------------------------------------
-  def __route_request_with_error(self, msg):
-    #remove from route cache
-    self.__route_cache.remove_link(msg.brokenLink[0], msg.brokenLink[1])
-    
-    rr_ident = (msg.path[0], msg.originatorID) #identifier of rreq
-    
-    #self.__debug_print("Route request for ID {} with path {}".format(msg.contents, msg.path))
-    if int(msg.contents) == self.ID:
-      self.__debug_print("successful route req with error")
-      msg.path.append(str(self.ID))
-      rev_path = list(reversed(msg.path))
-      self.__network_sendto(self.__make_packet_o(DSRMessageType.REPLY, rev_path, msg.path[0], msg.originatorID,msg.originatorNodeID), int(rev_path[1]))
-      #self.__debug_print("Sending route reply to {} via path {}".format(msg.path[0], rev_path))
-    elif self.ID in [int(value) for value in msg.path] or rr_ident in self.__seen_route_requests :
-       #avoid cyclic requests, and already seen requests
-      pass
-    else:
-      #add to buffer of route requests already seen
-      self.__seen_route_requests.add(rr_ident)
-      
-      msg.path.append(str(self.ID))
-      pkt = self.__make_packet_o(DSRMessageType.ERRREQ, msg.path, msg.contents, msg.originatorID,msg.originatorNodeID)
-      pkt.brokenLink = msg.brokenLink
-      #self.__debug_print("Route request: Appending myself to path {}".format(msg.path))
-      self.__network_broadcast(pkt)
-
   #-----------------------------------------------------------
   #                   DSR - ROUTE REPLY
   #-----------------------------------------------------------
@@ -253,8 +221,9 @@ class DSR:
       self.__done_buffer.append(msg)
     else:
       intpath = [int(value) for value in msg.path]
+      print(str(intpath))
       next_index = intpath.index(self.ID)+1
-      pkt = self.__make_packet_o(DSRMessageType.SEND, msg.path, msg.contents, msg.originatorID,msg.originatorNodeID)
+      pkt = self.__make_packet_o(DSRMessageType.SEND, msg.path, msg.contents, msg.originatorID, msg.originatorNodeID)
       self.__add_to_ack_buffer(pkt) #expect acknowledgement for send
       self.__network_sendto(pkt, int(msg.path[next_index]))
     #need to start route discovery if a link is broken
@@ -300,7 +269,7 @@ class DSR:
     start = time.time()
     #add too send buffer
     #this ensures that we re-broadcast rreqs that are taking too long
-    self.__send_buffer.append((originalPkt.contents, originalPkt, start, 1))
+    self.__send_buffer.append((originalPkt.contents, temp, start, 1))
     self.__network_broadcast(temp)
 
 
@@ -341,23 +310,23 @@ class DSR:
     self.__debug_print(' ---NET--- {} Packet Received! {}'.format(self.ID, pkt))
 
   #pops all the messages this dsr node has received
-  #and which were destined for it
   def pop_inbox(self):
     tmp = self.__done_buffer
     self.__done_buffer = []
     return tmp
-
+  
+  #pops all the messages the dsr node wishes to send on the network
   def pop_outbox(self):
-    #self.__debug_print("testing2 ", self.__outbox)
     tmp = self.__outbox
     self.__outbox = []
     return tmp
-
+  
+  #remove some packet by id from the send buffer, and get its contents back
   def __remove_from_send_buffer(self, ID):
     for send in self.__send_buffer:
       if send[1].originatorID == ID:
         self.__send_buffer.remove(send)
-        return send[0] #return the data associated with that route request
+        return send[0] #return the data/contents associated with that route request
     return None
 
   #-----------------------------------------------------------
@@ -381,10 +350,6 @@ class DSR:
         
         #do a route discovery with error propagation
         self.__route_discover_with_error(ack[0], (self.ID, int(unreachable_node)))
-        #NOTE: this currently causes a bug
-        #if the message does eventually get send, but we assume it was an error
-        #then there is a problem, because we may correctly send the same message twice
-        #however eaching sending (the original, and this error correcting one) will have different ids
         
         #remove from waiting for acknowledgement
         self.__awaiting_acknowledgement_buffer.remove(ack)
