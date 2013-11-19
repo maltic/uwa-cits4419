@@ -4,6 +4,7 @@ import socket
 import threading
 import time
 from dsr_packet import Packet
+from route_cache import RouteCache
 
 DSR_PORT = 1069
 
@@ -105,6 +106,18 @@ def run_background_updates(dsr, network):
 				
 				print(msg_parts[0] + "> " + msg_parts[1] + "\n")
 
+def print_help():
+	print("Available Commands: ")
+	print("-------------------")
+	print("show route <id>                # Prints the current best route in the cache")
+	print("show route-cache               # Prints the entire route cache to terminal")
+	print("show route-cache <id>          # Prints the route cache to terminal for a given destination")
+	print("show id                        # Prints the current node's ID")
+	print("run test <id> <id> <id>        # sends test message to the following node IDs")
+	print("run send '<msg>' <id>          # sends a message to a specific ID")
+	print("set debug <on/off>             # Enable / Disable DSR terminal debugging")
+	print("help                           # Prints this help message")
+	print("exit                           # Exit the program")
 
 #main loop
 arg_address = sys.argv[1]
@@ -137,85 +150,104 @@ while True:
 	
 	input_tokens = user_input.split(" ")
 	
-	if input_tokens[0] == "show":
-		#if input_tokens[1] == "route":
-			#shortest_path = dsr.__route_cache.get_shortest_path(int(input_tokens[2]))
-			#print("Shortest Path to node: " + str(input_tokens[2]) + " is " + str(shortest_path))
-		
-		#if input_tokens[1] == "route-cache":
-			#route_cache = dsr.route_cache.get_edge_list()
-			#print("Current Route Cache: " + str(route_cache))
+	try:
+		if input_tokens[0] == "show":
+			if input_tokens[1] == "route":
+				route_cache = dsr.get_route_cache()
+				shortest_path = route_cache.get_shortest_path(int(input_tokens[2]))
+				if shortest_path == None:
+					print("Path doesn't exist in cache")
+				else:
+					print("Shortest Path to node: " + str(input_tokens[2]) + " is " + str(shortest_path))
 			
-		if input_tokens[1] == "id":
-			print("Node ID: " + str(node_id))
+			if input_tokens[1] == "route-cache":
+				
+				route_cache = dsr.get_route_cache()
+				
+				if len(input_tokens) == 2:
+					print("Current Route Cache: " + str(route_cache.get_edge_list()))
+				
+				if len(input_tokens) > 2:
+					try:
+						val = int(input_tokens[2])
+						print("Current Route Cache for ID " + str(input_tokens[2]) + ": " + str(route_cache.get_edge_list()[input_tokens[2]]))
+					except ValueError:
+						print("Input not a valid node ID")
+				
+			if input_tokens[1] == "id":
+				print("Node ID: " + str(node_id))
+	except IndexError:
+		print_help()
 	
-	if input_tokens[0] == "run":
-		if input_tokens[1] == "test":
-			
-			length = len(input_tokens) - 1
+	try:
+		if input_tokens[0] == "run":
+			if input_tokens[1] == "test":
+				
+				length = len(input_tokens) - 1
 
-			#ensure our input is good.
-			try:
-				#not the best, but allows me to check input before processing.
-				for i in range (2, length):
-					val = int(input_tokens[i])
-				for i in range (2, length):
-					dsr.send_message("Test Message from " + str(node_id) + " to " + input_tokens[i], input_tokens[i])
-			except ValueError:
-				print("Input not a valid node ID")
+				#ensure our input is good.
+				try:
+					#not the best, but allows me to check input before processing.
+					for i in range (2, length):
+						val = int(input_tokens[i])
+					for i in range (2, length):
+						dsr.send_message("Test Message from " + str(node_id) + " to " + input_tokens[i], input_tokens[i])
+				except ValueError:
+					print("Input not a valid node ID")
 
-		if input_tokens[1] == "send":
-			
-			first_index = 0
-			last_index = 0
-			
-			#find the message amoungst the tokens
-			for j in range(2, len(input_tokens)-1):
-				tok_len = len(input_tokens[j])-1
-				#check for a string termination character (")
-				if input_tokens[j][0] == '"':
-					first_index = j
-				if input_tokens[j][tok_len] == '"':
-					last_index = j
+			if input_tokens[1] == "send":
+				
+				first_index = 0
+				last_index = 0
+				
+				#find the message amoungst the tokens
+				for j in range(2, len(input_tokens)-1):
+					tok_len = len(input_tokens[j])-1
+					#check for a string termination character (")
+					if input_tokens[j][0] == '"':
+						first_index = j
+					if input_tokens[j][tok_len] == '"':
+						last_index = j
 
-			message = ""
+				message = ""
 
-			if first_index != 0 and last_index != 0:
-				for tok in range(first_index, last_index+1):
-					message = message + str(input_tokens[tok])
+				if first_index != 0 and last_index != 0:
+					for tok in range(first_index, last_index+1):
+						message = message + str(input_tokens[tok])
 
-			message = message.strip('"')
+				message = message.strip('"')
 
-			try:
-				val = int(input_tokens[last_index + 1])
-				dsr.send_message(message, input_tokens[last_index + 1])
-			except ValueError:
-				print("Input not a valid node ID")
+				try:
+					val = int(input_tokens[last_index + 1])
+					dsr.send_message(message, input_tokens[last_index + 1])
+				except ValueError:
+					print("Input not a valid node ID")
+	except IndexError:
+		print_help()
 
 
-	if input_tokens[0] == "set":
-		if input_tokens[1] == "debug":
-			if input_tokens[2] == "on":
-				dsr_debug = 1
-				print("DSR Debugging enabled")
-			if input_tokens[2] == "off":
-				dsr_debug = 0
-				print("DSR Debugging disabled")
+	try:
+		if input_tokens[0] == "set":
+			if input_tokens[1] == "debug":
+				if input_tokens[2] == "on":
+					dsr_debug = 1
+					print("DSR Debugging enabled")
+				elif input_tokens[2] == "off":
+					dsr_debug = 0
+					print("DSR Debugging disabled")
+				else:
+					print("Unsupported input " + str(input_tokens[2]))
 
-	if input_tokens[0] == "help":
-		print("Available Commands: ")
-		print("-------------------")
-		print("show route <id>                # Prints the current best route in the cache")
-		print("show route cache               # Prints the entire route cache to terminal")
-		print("show id                        # Prints the current node's ID")
-		print("run test <id> <id> <id>        # sends test message to the following node IDs")
-		print("run send '<msg>' <id>          # sends a message to a specific ID")
-		print("set debug <on/off>             # Enable / Disable DSR terminal debugging")
-		print("help                           # Prints this help message")
-		print("exit                           # Exit the program")
+		if input_tokens[0] == "help":
+			print_help()
 
-	if input_tokens[0] == "exit":
-		exit(0)
+		if input_tokens[0] == "exit":
+			exit(0)
+	except IndexError:
+		print_help()
+	
+	if input_tokens[0] != "show" and input_tokens[0] != "run" and input_tokens[0] != "set" and input_tokens[0] != "help" and input_tokens[0] != "":
+		print("Unsupported input '" + str(input_tokens[0]) + "'")
 
 
 	if dsr_debug == 1:

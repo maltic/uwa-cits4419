@@ -117,6 +117,10 @@ class DSR:
     pkt.originatorNodeID = origantorNode
     self.next_packet_id += 1
     return pkt
+  
+  #Return the RouteCache on request
+  def get_route_cache(self):
+    return self.__route_cache
 
   #-----------------------------------------------------------
   #                     NETWORK - SENDING
