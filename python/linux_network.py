@@ -144,9 +144,6 @@ def run_testing(dsr, msg, destinations):
 			dsr.send_message(hostname + "#Test Message to " + dst + " from " + str(node_id), dst)
 			time.sleep(1)
 
-
-
-
 def print_help():
 	print("Available Commands: ")
 	print("-------------------")
@@ -174,6 +171,8 @@ def write_message(msg):
 
 def get_timestamp():
 	return datetime.now().strftime(TIMESTAMP_FORMAT)
+	
+
 
 
 #main loop
@@ -284,6 +283,7 @@ while True:
 	try:
 		if input_tokens[0] == "set":
 			if input_tokens[1] == "debug":
+
 				if input_tokens[2] == "on":
 					DSR_TERMINAL_LOG_FLAG = True
 					log_message("DSR Debugging enabled")

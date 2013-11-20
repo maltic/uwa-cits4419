@@ -102,8 +102,7 @@ class DSR:
     print(contents)
 
   def __log(self, contents):
-    print("DSR LOG: " + contents)
-    #self.__debug_buffer.append("DSR LOG: " + contents)
+    self.__debug_buffer.append("DSR LOG: " + contents)
 
   def pop_debug_buffer(self):
     ret = self.__debug_buffer
