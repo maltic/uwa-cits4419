@@ -59,7 +59,7 @@ import random
 import string
 import sys
 
-SIMULATION_STEPS = 50
+SIMULATION_STEPS = 100
                # x  0  1  2  3  4        y
 CAN_TALK = [(0,  [ [0, 1, 1, 1, 1],    # 0
                    [1, 0, 1, 1, 1],    # 1
