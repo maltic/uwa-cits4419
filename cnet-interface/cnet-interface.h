@@ -32,8 +32,6 @@ typedef struct
 //#define MAX_MESSAGE_SIZE (MAX_FRAME_SIZE - FRAME_HEADER_SIZE)
 //set to frame size so we don't have to bother with a transport layer
 
-#define MAXHOPS 1
-
 #define PIPE_MSG_SIZE 100
 
 /*TIMERS*/

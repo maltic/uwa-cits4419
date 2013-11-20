@@ -2,7 +2,7 @@
 
 
 //TODO This probably needs tweaking
-#define ROUTETIME 5000
+#define ROUTETIME 1000000
 
 QUEUE new_messages;
 QUEUE unrouted;
@@ -87,20 +87,21 @@ int get_from_pipe(int pipefd, char* buf, size_t bufsiz)
 	int num_bytes = 0;
 	char * next_char = malloc(1);
 	if(read(pipefd,next_char,1) > 0) {
-		buf[num_bytes] = *next_char;
+		memcpy((buf+num_bytes),next_char,1);
 		num_bytes++;
 		int bytes_read = 1;
-		while(bytes_read > 0 && num_bytes < bufsiz-1 && *next_char != '\0') {
-			next_char = malloc(1);
+		while(bytes_read > 0 && num_bytes < bufsiz-1 && *next_char != '\n') {
 			//printf("Read error: %s\n",strerror(errno));
 			bytes_read = read(pipefd,next_char,1);
 			if(bytes_read > 0) {
-				buf[num_bytes] = *next_char;
+				memcpy((buf+num_bytes),next_char,1);
 				num_bytes++;
 			}
 		}
-		//buf[num_bytes] = '\0';
+		buf[num_bytes-1] = '\0';
+		printf("%d: Got something from pipe %s\n",nodeinfo.address,buf);
 	}
+	free(next_char);
 	return num_bytes;
 }
 
@@ -118,9 +119,9 @@ EVENT_HANDLER(app_rdy)
         //printf("%d: copied message\n",nodeinfo.address);
         *(final_msg+(len)) = '\0';
         //printf("%d: reallocated\n",nodeinfo.address);
-	printf("%d: Made a message for %d\n",nodeinfo.address,dest);
+	printf("%d: Made %d bytes for %d\n",nodeinfo.address,len,dest);
 	
-	char buf[200];
+	char buf[500];
 	int final_len = sprintf(buf,"MSG.%s.%d\n",final_msg,dest);
 	write(outFD,buf,final_len);
 	
@@ -131,16 +132,6 @@ EVENT_HANDLER(app_rdy)
 	}
 	printf("%d: wrote %d bytes to my dsr\n",nodeinfo.address,num_bytes);
 	*/
-}
-
-int get_msg_type(char *msg, char* buf, size_t bufsiz)
-{
-	return 0;
-}
-
-int get_msg_contents(char* msg, char* buf, size_t bufsiz)
-{
-	return 0;
 }
 
 EVENT_HANDLER(get_routed_messages)
@@ -156,10 +147,15 @@ EVENT_HANDLER(get_routed_messages)
 	while(queue_nitems(unrouted) > 0) {
 		size_t len;
 		char* m = queue_remove(unrouted,&len);
-		char buf[100];
-		int final_len = sprintf(buf,"PKT.%s\n",m);
+		char* mtemp = malloc(sizeof(char)*(len+1));
+		memcpy(mtemp,m,len);
+		mtemp[len] = '\0';
+		char buf[500];
+		int final_len = sprintf(buf,"PKT.%s\n",mtemp);
 		write(outFD,buf,final_len);
 		//fprintf(out_pipe,"PKT.%s\n",m->msg);
+		free(m);
+		free(mtemp);
 	}
 	//push everything down everything in to_route to routing layer
 	//for now we just don't route them, we just flood one hop
@@ -174,25 +170,30 @@ EVENT_HANDLER(get_routed_messages)
 		if(tok != NULL) {
 			strcpy(type,tok);
 			tok = strtok(NULL,".");
+			if(tok == NULL) {
+				printf("%d: SHIIIIIIITTTTT\n",nodeinfo.address);
+				break;
+			}
 			strcpy(contents,tok);
 			if(strcmp(type,"MSG") == 0) {
 				printf("%d: A MESSAGE FOR ME!\n",nodeinfo.address);
 				size_t len = strlen(contents);
+				//len = len-1;
 				CNET_write_application(contents,&len);
 			} else if(strcmp(type,"FWD") == 0) {
-				printf("%d: getting fwd %s\n",nodeinfo.address,contents);
+				//printf("%d: getting fwd %s\n",nodeinfo.address,contents);
 				queue_add(routed,contents,strlen(contents));
 			}
 		}
 	}
 	//then push everything down to the link layer
 	while(queue_nitems(routed) > 0) {
-		printf("%d: forwarding messages\n",nodeinfo.address);
+		//printf("%d: forwarding messages\n",nodeinfo.address);
 		char *next;
 		size_t len;
 		next = queue_remove(routed,&len);
 		link_send_data(next,len);
-		//free(next);
+		free(next);
 	}
 	CNET_start_timer(EV_DO_ROUTING, ROUTETIME, 1);
 }
@@ -200,6 +201,7 @@ EVENT_HANDLER(get_routed_messages)
 void net_recv(void* msg, int len)
 {
 	//enqueue for routing
+	//printf("%d: received from physical: %s\n",nodeinfo.address,msg
 	queue_add(unrouted,msg,len);
 }
 

@@ -28,16 +28,31 @@ out_pipe = None
 nodeID = 0
 char_encoding = 'utf-8'
 
+
+class InterfacePacketType:
+  MSG = 0
+  PKT = 1
+
+class InterfacePacket:
+  def __init__(self, t, contents):
+    self.type = t
+    self.contents = contents
+
 def send():
   rec = my_dsr.pop_inbox()
   fwd = my_dsr.pop_outbox()
   #write messages to pipe
+  #tmpfile.write("MY INBOX CONTAINS: " + str(rec) + "\n")
   for msg in rec:
-    tosend = "MSG." + msg.contents + "\0"
-    os.write(outfd,tosend.encode(char_encoding))
+    tosend = "MSG." + msg.contents + "\n"
+    tmpfile.write("RECEIVING A MESSAGE: " + msg.contents + "\n")
+    #tmpfile.write("ENCODED MESSAGE: " + str(tosend.encode(char_encoding)) + "\n")
+    os.write(outfd,"MSG.".encode(char_encoding))
+    os.write(outfd,msg.contents.encode('ascii'))
+    os.write(outfd,"\0".encode(char_encoding))
   for pkt in fwd:
     tmpfile.write("FORWARDING A MESSAGE: " + str(pkt[0]) + "\n")
-    tosend = "FWD." + str(pkt[0])+"\0"
+    tosend = "FWD." + str(pkt[0]) + "\n"
     os.write(outfd,tosend.encode(char_encoding))
 
 
@@ -70,11 +85,15 @@ def read_from_pipe(pipefd):
     
     try:
       next_byte = os.read(pipefd,1)
-      msg.extend(next_byte)
       next_char = next_byte.decode(char_encoding)
+      if next_char != "\n":
+      	msg.extend(next_byte)
     except OSError as e:
       #tmpfile.write(e.strerror + "\n")
-      break       
+      return ""
+    except UnicodeDecodeError as e:
+      next_char = ""
+      continue
   return bytearray(msg).decode(char_encoding)
 
 if __name__ == "__main__":
@@ -107,7 +126,7 @@ if __name__ == "__main__":
     receive()
     my_dsr.update()
     send()
-    time.sleep(1)
+    time.sleep(1.0)
   #receive(infd, tmpfile)
   
   #os.close(outfd)
