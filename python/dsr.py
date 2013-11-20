@@ -74,8 +74,6 @@ MAX_route_discoveries = 3
 class DSR:
   #-----------------------------------------------------------
   #                    INITIALISATIONS
-  #-----------------------------------------------------------
-  #Initisalise itself with 5 queues - receive Q, send Q, send buffer, done buffer, and ack buffer.
   def __init__(self, node_addr):
     #self.network = simulator_network.SimulatorNetwork(net, self)
     self.next_packet_id = 0
@@ -88,8 +86,8 @@ class DSR:
     self.ID = node_addr
     self.__route_cache = route_cache.RouteCache(self.ID)
     # set of route reqs which have already been seen
-    # we should probably be expiring old entries from the bellow buffer
     self.__seen_route_requests = set()
+    # set of message ids which we have already succesfully received
     self.__already_received_msgs = set()
     
   def __debug_print(self, contents):
@@ -213,7 +211,7 @@ class DSR:
       #self.__debug_print("This is not my route reply. Forwarding to {}".format(msg.path[next_index]))
       
 
-
+  #What to do with messages of type SEND
   def __route_send(self, msg):
     #if I am the recipient, yay! add it to the done_buffer
     #if not, send it to the next guy on the list
@@ -377,7 +375,9 @@ class DSR:
           #add to buffer again with updated transmissions
           toAdd.append((ack[0],time.time(),ack[2]+1))
     self.__awaiting_acknowledgement_buffer.extend(toAdd)
-
+  
+  #add a packet to the ack buffer
+  #all the packets in this buffer are awaiting acknowledgement
   def __add_to_ack_buffer(self, pkt):
     for ack in self.__awaiting_acknowledgement_buffer:
       if ack[0] == pkt:
@@ -388,7 +388,9 @@ class DSR:
         return
     start = time.time()
     self.__awaiting_acknowledgement_buffer.append((pkt,start,1))
-
+  
+  #check the send buffer for messages that need to be removed
+  #or have their route discovery reinitiated
   def __check_send_buffer(self):
     for send in self.__send_buffer:
       end = time.time()
