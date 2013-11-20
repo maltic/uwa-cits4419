@@ -73,7 +73,7 @@ MAX_transmissions = 3
 #maximum time to wait for an acknowledgement
 MAX_time_between_ack = 1.5    #in seconds
 #maximum wait time before route discovery is retried
-MAX_time_between_request = 1  #in seconds
+MAX_time_between_request = 2  #in seconds
 #maximum number of route discovery retries
 MAX_route_discoveries = 3
 
