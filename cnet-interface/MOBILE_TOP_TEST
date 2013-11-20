@@ -1,15 +1,15 @@
 compile			= "-Wall -Werror -std=gnu99 -g walk.c dummy-net.c broadcast-link.c"
 
-minmessagesize	= 500 bytes
-maxmessagesize	= 1000 bytes
-messagerate = 1000000 usec
+minmessagesize	= 50 bytes
+maxmessagesize	= 100 bytes
+messagerate = 5000000 usec
 
-mapwidth	= 200
-mapheight	= 200
+mapwidth	= 600
+mapheight	= 600
 mapgrid		= 5
-mapscale	= 0.25
+mapscale	= 1.0
 
-probframecorrupt = 4 
+probframecorrupt = 0 
 mobile rPi1 {
 x=10,y=10
 wlan{}
