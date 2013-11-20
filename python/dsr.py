@@ -71,7 +71,7 @@ from dsr_packet import DSRMessageType, Packet
 #maximum retransmissions of a packet to get an acknowledgement before it is dropped
 MAX_transmissions = 3
 #maximum time to wait for an acknowledgement
-MAX_time_between_ack = 0.5    #in seconds
+MAX_time_between_ack = 1.5    #in seconds
 #maximum wait time before route discovery is retried
 MAX_time_between_request = 1  #in seconds
 #maximum number of route discovery retries
@@ -96,12 +96,19 @@ class DSR:
     self.__seen_route_requests = set()
     # set of message ids which we have already succesfully received
     self.__already_received_msgs = set()
+    self.__debug_buffer = []
     
   def __debug_print(self, contents):
     print(contents)
     
   def __log(self, contents):
-    print("DSR LOG: " + contents)
+    self.__debug_buffer.append("DSR LOG: " + contents)
+
+  def pop_debug_buffer(self):
+    ret = self.__debug_buffer
+    self.__debug_buffer = []
+    return ret
+  
 
   #Generate a DSR packet
   def __make_packet(self, type, path, contents):

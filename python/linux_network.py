@@ -117,8 +117,7 @@ def run_background_updates(dsr, network):
 				
 				print(msg_parts[0] + "> " + msg_parts[1] + "\n")
 
-		#dsr_debug = dsr.pop_debug_buffer()
-		dsr_debug = []
+		dsr_debug = dsr.pop_debug_buffer()
 
 		global LOG_BUFFER
 		global DSR_TERMINAL_LOG_FLAG
