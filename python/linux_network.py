@@ -15,6 +15,8 @@ DSR_TERMINAL_LOG_FLAG = False
 TIMESTAMP_FORMAT = '%Y%m%d%H%M%S'
 CURRENT_LOG_FILE = ""
 
+RUN_TESTING = False
+
 
 class Network:
 	def __init__(self, ip_address, dsr_port) :
@@ -115,7 +117,7 @@ def run_background_updates(dsr, network):
 				app_msg = str(pkt.contents)
 				msg_parts = app_msg.split("#")
 				
-				print(msg_parts[0] + "> " + msg_parts[1] + "\n")
+				log_message("Msg from: " + msg_parts[0] + "> " + msg_parts[1])
 
 		dsr_debug = dsr.pop_debug_buffer()
 
@@ -135,6 +137,14 @@ def run_background_updates(dsr, network):
 			print(term_msg)
 		LOG_BUFFER = []
 
+def run_testing(dsr, msg, destinations):
+	global RUN_TESTING
+	while RUN_TESTING == True:
+		for dst in destinations:
+			dsr.send_message(hostname + "#Test Message to " + dst + " from " + str(node_id), dst)
+			time.sleep(1)
+
+
 
 
 def print_help():
@@ -145,8 +155,9 @@ def print_help():
 	print("show route-cache <id>          # Prints the route cache to terminal for a given destination")
 	print("show id                        # Prints the current node's ID")
 	print("run test <id> <id> <id>        # sends test message to the following node IDs")
-	print("run send '<msg>' <id>          # sends a message to a specific ID")
+	print('run send "<msg>" <id>          # sends a message to a specific ID')
 	print("set debug <on/off>             # Enable / Disable DSR terminal debugging")
+	print("set testing <on/of>            # Enabled / Disable continuous testing with 'run' command")
 	print("help                           # Prints this help message")
 	print("exit                           # Exit the program")
 
@@ -157,7 +168,7 @@ def log_message(msg):
 
 def write_message(msg):
 	log_file = open(CURRENT_LOG_FILE, 'a')
-	log_file.write(msg + "\n")
+	log_file.write(msg)
 	log_file.close()
 
 
@@ -180,8 +191,6 @@ network = Network(arg_address, DSR_PORT)
 
 hostname = socket.gethostname()
 
-run_event = threading.Event()
-run_event.set()
 background_thread = threading.Thread(target=run_background_updates, args=(dsr, network))
 background_thread.daemon = True
 background_thread.start()
@@ -228,15 +237,25 @@ while True:
 		if input_tokens[0] == "run":
 			if input_tokens[1] == "test":
 				
-				length = len(input_tokens) - 1
+				length = len(input_tokens)
+				ids_to_send_to = []
 
 				#ensure our input is good.
 				try:
 					#not the best, but allows me to check input before processing.
 					for i in range (2, length):
 						val = int(input_tokens[i])
-					for i in range (2, length):
-						dsr.send_message("Test Message from " + str(node_id) + " to " + input_tokens[i], input_tokens[i])
+					for k in range (2, length):
+						dsr.send_message(hostname + "#Test Message to " + input_tokens[k], input_tokens[k])
+						log_message("Send Test message to " + str(input_tokens[k]))
+						ids_to_send_to.append(input_tokens[k])
+
+					if RUN_TESTING == True:
+						msg = hostname + "#Test Message to " + str(input_tokens[k])
+						testing_thread = threading.Thread(target=run_testing, args=(dsr, msg, ids_to_send_to))
+						testing_thread.daemon = True
+						testing_thread.start()
+						
 				except ValueError:
 					log_message("Input not a valid node ID")
 
@@ -261,6 +280,7 @@ while True:
 						message = message + str(input_tokens[tok])
 
 				message = message.strip('"')
+				message = hostname + "#" + message
 
 				try:
 					val = int(input_tokens[last_index + 1])
@@ -282,6 +302,12 @@ while True:
 					log_message("DSR Debugging disabled")
 				else:
 					log_message("Unsupported input " + str(input_tokens[2]))
+
+			if input_tokens[1] == "testing":
+				if input_tokens[2] == "on":
+					RUN_TESTING = True
+				if input_tokens[2] == "off":
+					RUN_TESTING = False
 
 		if input_tokens[0] == "help":
 			print_help()
