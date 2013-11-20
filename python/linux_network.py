@@ -3,10 +3,17 @@ import dsr
 import socket
 import threading
 import time
+from datetime import datetime
 from dsr_packet import Packet
 from route_cache import RouteCache
 
 DSR_PORT = 1069
+
+LOG_BUFFER = []
+DSR_TERMINAL_LOG_FLAG = False
+
+TIMESTAMP_FORMAT = '%Y%m%d%H%M%S'
+CURRENT_LOG_FILE = ""
 
 
 class Network:
@@ -72,6 +79,10 @@ class Network:
 
 
 def run_background_updates(dsr, network):
+	
+	global CURRENT_LOG_FILE
+	
+	CURRENT_LOG_FILE = "dsr_log_" + str(get_timestamp()) + ".log"
 
 	while True:
 		#send messages on the network that are waiting in the outbox
@@ -106,6 +117,27 @@ def run_background_updates(dsr, network):
 				
 				print(msg_parts[0] + "> " + msg_parts[1] + "\n")
 
+		#dsr_debug = dsr.pop_debug_buffer()
+		dsr_debug = []
+
+		global LOG_BUFFER
+		global DSR_TERMINAL_LOG_FLAG
+		
+		if DSR_TERMINAL_LOG_FLAG == True:
+			for msg in dsr_debug:
+				write_message(msg)
+			LOG_BUFFER.extend(dsr_debug)
+		else:
+			for msg in dsr_debug:
+				write_message(msg)
+
+		#output to the terminal
+		for term_msg in LOG_BUFFER:
+			print(term_msg)
+		LOG_BUFFER = []
+
+
+
 def print_help():
 	print("Available Commands: ")
 	print("-------------------")
@@ -119,6 +151,21 @@ def print_help():
 	print("help                           # Prints this help message")
 	print("exit                           # Exit the program")
 
+def log_message(msg):
+	global LOG_BUFFER
+	LOG_BUFFER.append(msg)
+	write_message(msg)
+
+def write_message(msg):
+	log_file = open(CURRENT_LOG_FILE, 'a')
+	log_file.write(msg + "\n")
+	log_file.close()
+
+
+def get_timestamp():
+	return datetime.now().strftime(TIMESTAMP_FORMAT)
+
+
 #main loop
 arg_address = sys.argv[1]
 
@@ -127,9 +174,6 @@ tokens = arg_address.split(".")
 
 #node id as a string
 node_id = tokens[3]
-
-#dsr debug state
-dsr_debug = 0
 
 dsr = dsr.DSR(int(node_id))
 
@@ -148,6 +192,8 @@ while True:
 	user_input = input("dsr-cli@" + hostname + "> ")
 	user_input = user_input.strip()
 	
+	write_message("dsr-cli@" + hostname + "> " + user_input)
+	
 	input_tokens = user_input.split(" ")
 	
 	try:
@@ -156,26 +202,26 @@ while True:
 				route_cache = dsr.get_route_cache()
 				shortest_path = route_cache.get_shortest_path(int(input_tokens[2]))
 				if shortest_path == None:
-					print("Path doesn't exist in cache")
+					log_message("Path doesn't exist in cache")
 				else:
-					print("Shortest Path to node: " + str(input_tokens[2]) + " is " + str(shortest_path))
+					log_message("Shortest Path to node: " + str(input_tokens[2]) + " is " + str(shortest_path))
 			
 			if input_tokens[1] == "route-cache":
 				
 				route_cache = dsr.get_route_cache()
 				
 				if len(input_tokens) == 2:
-					print("Current Route Cache: " + str(route_cache.get_edge_list()))
+					log_message("Current Route Cache: " + str(route_cache.get_edge_list()))
 				
 				if len(input_tokens) > 2:
 					try:
 						val = int(input_tokens[2])
-						print("Current Route Cache for ID " + str(input_tokens[2]) + ": " + str(route_cache.get_edge_list()[input_tokens[2]]))
+						log_message("Current Route Cache for ID " + str(input_tokens[2]) + ": " + str(route_cache.get_edge_list()[input_tokens[2]]))
 					except ValueError:
-						print("Input not a valid node ID")
+						log_message("Input not a valid node ID")
 				
 			if input_tokens[1] == "id":
-				print("Node ID: " + str(node_id))
+				log_message("Node ID: " + str(node_id))
 	except IndexError:
 		print_help()
 	
@@ -193,7 +239,7 @@ while True:
 					for i in range (2, length):
 						dsr.send_message("Test Message from " + str(node_id) + " to " + input_tokens[i], input_tokens[i])
 				except ValueError:
-					print("Input not a valid node ID")
+					log_message("Input not a valid node ID")
 
 			if input_tokens[1] == "send":
 				
@@ -221,7 +267,7 @@ while True:
 					val = int(input_tokens[last_index + 1])
 					dsr.send_message(message, input_tokens[last_index + 1])
 				except ValueError:
-					print("Input not a valid node ID")
+					log_message("Input not a valid node ID")
 	except IndexError:
 		print_help()
 
@@ -230,13 +276,13 @@ while True:
 		if input_tokens[0] == "set":
 			if input_tokens[1] == "debug":
 				if input_tokens[2] == "on":
-					dsr_debug = 1
-					print("DSR Debugging enabled")
+					DSR_TERMINAL_LOG_FLAG = 1
+					log_message("DSR Debugging enabled")
 				elif input_tokens[2] == "off":
-					dsr_debug = 0
-					print("DSR Debugging disabled")
+					DSR_TERMINAL_LOG_FLAG = 0
+					log_message("DSR Debugging disabled")
 				else:
-					print("Unsupported input " + str(input_tokens[2]))
+					log_message("Unsupported input " + str(input_tokens[2]))
 
 		if input_tokens[0] == "help":
 			print_help()
@@ -247,14 +293,8 @@ while True:
 		print_help()
 	
 	if input_tokens[0] != "show" and input_tokens[0] != "run" and input_tokens[0] != "set" and input_tokens[0] != "help" and input_tokens[0] != "":
-		print("Unsupported input '" + str(input_tokens[0]) + "'")
+		log_message("Unsupported input '" + str(input_tokens[0]) + "'")
 
-
-	if dsr_debug == 1:
-		debug_output = dsr.pop_debug_buffer()
-
-		for msg in debug_output:
-			print("DSR: " + str(msg))
 
 
 
