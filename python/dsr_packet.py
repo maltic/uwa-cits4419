@@ -60,10 +60,23 @@
 class DSRMessageType:
   REQUEST = 1
   REPLY = 2
-  ERROR = 3
+  ERROR = 3 #depreciated message type
   SEND = 4
   ACK = 5
-  ERRREQ = 6 #error route request: used to propagate a broken link with a route request
+  def as_string(ID):
+    if ID == 1:
+      return "REQUEST"
+    elif ID == 2:
+      return "REPLY"
+    elif ID == 3:
+      return "ERROR (Warning, depreciated)"
+    elif ID == 4:
+      return "SEND"
+    elif ID == 5:
+      return "ACK"
+    else:
+      return "UNKNOWN"
+    
 
 #-----------------------------------------------------------
 #                     DSR PACKET
@@ -104,3 +117,7 @@ class Packet:
     pkt.brokenLink = tuple(toks[7].split(">"))
     pkt.originatorNodeID = int(toks[8])
     return pkt
+    
+  def pretty_print(self):
+    return "[Type = {}, Path = {}, Contents = '{}', ID = {}, FromNodeID = {}, OriginalPacketID = {}, OriginalNodeID = {}, ToNodeID = {}, BrokenLink = {}]".format(DSRMessageType.as_string(self.type), self.path, self.contents, self.id, self.fromID, self.originatorID, self.originatorNodeID, self.toID, self.brokenLink)
+    
