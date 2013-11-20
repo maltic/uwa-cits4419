@@ -261,44 +261,34 @@ while True:
 
 			if input_tokens[1] == "send":
 				
-				first_index = 0
-				last_index = 0
+				quote_tokens = user_input.split('"')
 				
-				#find the message amoungst the tokens
-				for j in range(2, len(input_tokens)-1):
-					tok_len = len(input_tokens[j])-1
-					#check for a string termination character (")
-					if input_tokens[j][0] == '"':
-						first_index = j
-					if input_tokens[j][tok_len] == '"':
-						last_index = j
+				if len(quote_tokens) != 3:
+					raise IndexError('')
+				
+				message = quote_tokens[1]
+				dst = quote_tokens[2].strip()
 
-				message = ""
-
-				if first_index != 0 and last_index != 0:
-					for tok in range(first_index, last_index+1):
-						message = message + str(input_tokens[tok])
-
-				message = message.strip('"')
 				message = hostname + "#" + message
 
 				try:
-					val = int(input_tokens[last_index + 1])
-					dsr.send_message(message, input_tokens[last_index + 1])
+					val = int(dst)
+					dsr.send_message(message, dst)
 				except ValueError:
 					log_message("Input not a valid node ID")
 	except IndexError:
 		print_help()
 
 
+
 	try:
 		if input_tokens[0] == "set":
 			if input_tokens[1] == "debug":
 				if input_tokens[2] == "on":
-					DSR_TERMINAL_LOG_FLAG = 1
+					DSR_TERMINAL_LOG_FLAG = True
 					log_message("DSR Debugging enabled")
 				elif input_tokens[2] == "off":
-					DSR_TERMINAL_LOG_FLAG = 0
+					DSR_TERMINAL_LOG_FLAG = False
 					log_message("DSR Debugging disabled")
 				else:
 					log_message("Unsupported input " + str(input_tokens[2]))
