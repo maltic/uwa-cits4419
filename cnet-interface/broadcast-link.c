@@ -63,7 +63,7 @@ static EVENT_HANDLER(send_timer)
 			size_t len;
                         FRAME* f = queue_remove(frame_queue,&len);
 			size_t framelen = FRAME_HEADER_SIZE + f->h.len;
-                        CHECK(CNET_write_physical(1, f, &framelen));
+                        CHECK(CNET_write_physical_reliable(1, f, &framelen));
                 }
         }
 	reset_send_timer();
