@@ -5,8 +5,8 @@
 #It is the project for CITS4419 - Mobile and Wireless Computing
 #at The University of Western Australia.
 #
-#<AUTHOR> = Ash Tyndall, Asra Alsahib, Bo Chuen Chung, Dayang Abang Mordian,
-#           Hui li Leow, Max Ward, Raphael Byrne, Timothy Raphael,
+#<AUTHOR> = Ash Tyndall, Asra Alshabib, Bo Chuen Chung, Dayang Abang Mordian,
+#           Hui Li Leow, Max Ward, Raphael Byrne, Timothy Raphael,
 #           Vincent Sun, Zhiqiang (Cody) Qiu
 #
 #<SUPERVISOR> = Prof. Amitava Datta
