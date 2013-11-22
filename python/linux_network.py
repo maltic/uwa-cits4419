@@ -1,3 +1,10 @@
+#INSTRUCTIONS
+#Run using "python3 linux_network.py <your IP address>"
+#The chat application we used during demonstration
+#Requires that you create an ad hoc wifi network amoung the nodes using DSR to chat
+#You must also know your IP in this network
+#Your node ID is the last number in your IP, for example 10.1.1.12 is node ID 12
+
 #==================================README=======================================
 #
 #This is a DSR protocol implementation using Python.
